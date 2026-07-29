@@ -1,4 +1,4 @@
-name: Build & Release
+name: Legacy Python Build & Release
 
 on:
   workflow_dispatch:

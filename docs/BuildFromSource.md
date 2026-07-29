@@ -1,6 +1,38 @@
 # Установка из исходников
 
-## Консольный прокси
+## Rust CLI
+
+Для нового консольного ядра нужен Rust `1.85` или новее:
+
+```bash
+cargo build --release --locked
+cargo test --all-targets
+./target/release/tg-ws-proxy \
+  --secret-file "$HOME/.local/state/tg-ws-proxy/secret"
+```
+
+Минимальный нативный tray для Linux, Windows 10+ и актуальной macOS собирается
+отдельной feature:
+
+```bash
+cargo build --release --locked \
+  --features desktop \
+  --bin tg-ws-proxy-desktop
+./target/release/tg-ws-proxy-desktop
+```
+
+Он запускает тот же Rust runtime, показывает реальный статус listener, умеет
+открыть/скопировать ссылку, перезапустить proxy, открыть JSON config и логи.
+Полный GUI-редактор, auto-update и autostart пока остаются в legacy frontend.
+
+Подробности и статус совместимости: [Rust-порт](./RUST_PORT.md).
+
+## Legacy Python CLI и полный tray
+
+Python-реализация пока сохранена для сравнения поведения и старых
+tray-сборок.
+
+### Консольный прокси
 
 Для запуска только прокси без интерфейса системного трея достаточно базовой установки:
 
@@ -9,30 +41,30 @@ pip install -e .
 tg-ws-proxy
 ```
 
-## Tray-приложение по ОС
+### Tray-приложение по ОС
 
-### Windows 7/10+
+#### Windows 7/10+
 
 ```bash
 pip install -e .
 tg-ws-proxy-tray-win
 ```
 
-### macOS
+#### macOS
 
 ```bash
 pip install -e .
 tg-ws-proxy-tray-macos
 ```
 
-### Linux
+#### Linux
 
 ```bash
 pip install -e .
 tg-ws-proxy-tray-linux
 ```
 
-## Консольный режим из исходников
+### Консольный режим из исходников
 
 ```bash
 tg-ws-proxy [--port PORT] [--host HOST] [--dc-ip DC:IP ...] [-v]

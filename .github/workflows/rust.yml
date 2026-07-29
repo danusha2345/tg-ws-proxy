@@ -1,0 +1,95 @@
+name: Rust
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  msrv:
+    name: MSRV 1.85.1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Rust 1.85.1
+        uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
+        with:
+          components: rustfmt, clippy
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          shared-key: msrv
+          cache-all-crates: false
+          cache-on-failure: false
+          save-if: ${{ github.event_name == 'push' }}
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --locked --all-targets --no-default-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --locked --all-targets --no-default-features
+
+      - name: Check desktop frontend
+        run: cargo clippy --locked --all-targets --features desktop -- -D warnings
+
+      - name: Test desktop frontend
+        run: cargo test --locked --all-targets --features desktop
+
+      - name: Build release
+        run: cargo build --release --locked --no-default-features
+
+  stable:
+    name: Stable (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          shared-key: stable
+          cache-all-crates: false
+          cache-on-failure: false
+          save-if: ${{ github.event_name == 'push' }}
+
+      - name: Check all targets
+        run: cargo check --locked --all-targets --no-default-features
+
+      - name: Run tests
+        run: cargo test --locked --all-targets --no-default-features
+
+      - name: Check desktop frontend
+        run: cargo check --locked --all-targets --features desktop
+
+      - name: Test desktop frontend
+        run: cargo test --locked --all-targets --features desktop

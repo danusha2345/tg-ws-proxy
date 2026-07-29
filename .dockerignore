@@ -1,6 +1,8 @@
 .git
 .github
 .gitignore
+target/
+.scratch/
 __pycache__/
 *.py[cod]
 *.pyo

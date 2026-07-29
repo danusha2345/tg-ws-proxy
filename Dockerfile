@@ -1,47 +1,36 @@
 # syntax=docker/dockerfile:1.7
 
-FROM python:3.12-slim AS builder
+FROM rust:1.85.1-bookworm AS builder
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1 \
-    VIRTUAL_ENV=/opt/venv
+WORKDIR /build
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential cargo libffi-dev libssl-dev \
-    && python -m venv "$VIRTUAL_ENV" \
-    && "$VIRTUAL_ENV/bin/pip" install --upgrade pip setuptools wheel \
-    && rm -rf /var/lib/apt/lists/*
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
 
-WORKDIR /app
-RUN "$VIRTUAL_ENV/bin/pip" install cryptography==46.0.5
+RUN cargo build --release --locked
 
-FROM python:3.12-slim AS runtime
+FROM debian:bookworm-slim AS runtime
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PATH=/opt/venv/bin:$PATH \
-    TG_WS_PROXY_HOST=0.0.0.0 \
+ENV TG_WS_PROXY_HOST=0.0.0.0 \
     TG_WS_PROXY_PORT=1443 \
-    TG_WS_PROXY_SECRET=""  \
-    TG_WS_PROXY_DC_IPS="2:149.154.167.220 4:149.154.167.220" \
-    TG_WS_PROXY_CF_WORKER=""
+    TG_WS_PROXY_ADVERTISE_HOST=127.0.0.1 \
+    TG_WS_PROXY_SECRET_FILE=/data/secret \
+    RUST_LOG=info
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tini ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates tini \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system app \
-    && useradd --system --gid app --create-home --home-dir /home/app app
+    && groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --no-create-home --home-dir /nonexistent app \
+    && install -d -o app -g app -m 0700 /data
 
-WORKDIR /app
-COPY --from=builder /opt/venv /opt/venv
-COPY proxy ./proxy
-COPY docs/README.md LICENSE ./
+COPY --from=builder /build/target/release/tg-ws-proxy /usr/local/bin/tg-ws-proxy
+COPY LICENSE /usr/share/doc/tg-ws-proxy/LICENSE
 
+WORKDIR /data
 USER app
 
+VOLUME ["/data"]
 EXPOSE 1443/tcp
 
-ENTRYPOINT ["/usr/bin/tini", "--", "/bin/sh", "-lc", "set -eu; args=\"--host ${TG_WS_PROXY_HOST} --port ${TG_WS_PROXY_PORT}\"; for dc in ${TG_WS_PROXY_DC_IPS}; do args=\"$args --dc-ip $dc\"; done; if [ -n \"${TG_WS_PROXY_SECRET}\" ]; then args=\"$args --secret ${TG_WS_PROXY_SECRET}\"; fi; if [ -n \"${TG_WS_PROXY_CF_WORKER}\" ]; then args=\"$args --cfproxy-worker-domain ${TG_WS_PROXY_CF_WORKER}\"; fi; exec /opt/venv/bin/python -u proxy/tg_ws_proxy.py $args \"$@\"", "--"]
-CMD []
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/tg-ws-proxy"]

@@ -1,5 +1,10 @@
 # Файлы конфигурации Tray-приложения
 
+Rust tray (`cargo run --features desktop --bin tg-ws-proxy-desktop`) использует
+тот же формат и сохраняет неизвестные поля, поэтому один config можно
+поочерёдно открывать legacy и Rust frontend. На Unix Rust сужает права файла до
+`0600`, поскольку в нём хранится secret.
+
 Tray-приложение хранит данные в:
 
 - **Windows:** `%APPDATA%/TgWsProxy`
@@ -21,8 +26,8 @@ Tray-приложение хранит данные в:
   "log_max_mb": 5.0,
   "check_updates": true,
   "cfproxy": true,
-  "cfproxy_user_domain": "",
-  "cfproxy_worker_domain": "",
+  "cfproxy_user_domain": [],
+  "cfproxy_worker_domain": [],
   "force_test_dc": false,
   "appearance": "auto"
 }
@@ -30,3 +35,6 @@ Tray-приложение хранит данные в:
 
 Ключ `check_updates`: при `true` выполняется запрос к GitHub и сравнение текущей версии с последним релизом (только уведомление и ссылка на страницу загрузки).  
 На Windows в конфиге может быть `autostart` (автозапуск при входе в систему).
+
+Эти два UI-параметра пока исполняет только legacy frontend. Rust tray сохраняет
+их без изменений, но не запускает updater и не управляет autostart.

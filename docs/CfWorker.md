@@ -41,6 +41,18 @@ workers.dev
 ```javascript
 import { connect } from "cloudflare:sockets";
 
+const ALLOWED_DESTINATIONS = new Set([
+	"149.154.175.50",
+	"149.154.167.51",
+	"149.154.175.100",
+	"149.154.167.91",
+	"149.154.171.5",
+	"91.105.192.100",
+	"149.154.175.10",
+	"149.154.167.40",
+	"149.154.175.117",
+]);
+
 function toBytes(data) {
 	if (data instanceof ArrayBuffer) {
 		return new Uint8Array(data);
@@ -66,6 +78,9 @@ export default {
 		}
 
 		const dst = url.searchParams.get("dst");
+		if (!ALLOWED_DESTINATIONS.has(dst)) {
+			return new Response("Destination is not allowed", { status: 403 });
+		}
 		const pair = new WebSocketPair();
 		const client = pair[0];
 		const server = pair[1];
@@ -119,7 +134,13 @@ export default {
 			}
 		})();
 
-		return new Response(null, { status: 101, webSocket: client });
+		const requestedProtocols = (request.headers.get("Sec-WebSocket-Protocol") || "")
+			.split(",")
+			.map((value) => value.trim());
+		const headers = requestedProtocols.includes("binary")
+			? { "Sec-WebSocket-Protocol": "binary" }
+			: {};
+		return new Response(null, { status: 101, webSocket: client, headers });
 	},
 };
 ```

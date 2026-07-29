@@ -9,6 +9,12 @@ build/
 venv/
 .venv/
 
+# Rust
+/target/
+
+# Local scratch/state
+/.scratch/
+
 # PyInstaller
 *.manifest
 *.log

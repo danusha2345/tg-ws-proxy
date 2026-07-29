@@ -32,6 +32,12 @@
 
 **Локальный MTProto-прокси** для Telegram Desktop, который **ускоряет работу Telegram**, перенаправляя трафик через WebSocket-соединения. Данные передаются в том же зашифрованном виде, а для работы не нужны сторонние серверы.
 
+> [!NOTE]
+>
+> Ветка `rust-port` переносит консольное ядро на Rust. Состояние порта,
+> исправленные ошибки и команды сборки описаны в
+> [отдельном документе](./RUST_PORT.md).
+
 <picture>
   <source srcset="./images/preview-dark.png" media="(prefers-color-scheme: dark)">
   <img src="./images/preview-white.png">
@@ -114,7 +120,14 @@ Telegram Desktop → MTProto Proxy (127.0.0.1:1443) → WebSocket → Telegram D
 
 ## Автоматическая сборка
 
-Проект содержит спецификации PyInstaller ([`packaging/windows.spec`](../packaging/windows.spec), [`packaging/macos.spec`](../packaging/macos.spec), [`packaging/linux.spec`](../packaging/linux.spec)) и GitHub Actions workflow ([`.github/workflows/build.yml`](../.github/workflows/build.yml)) для автоматической сборки.
+Legacy Python-релизы собираются из спецификаций PyInstaller
+([`packaging/windows.spec`](../packaging/windows.spec),
+[`packaging/macos.spec`](../packaging/macos.spec),
+[`packaging/linux.spec`](../packaging/linux.spec)) workflow
+([`.github/workflows/build.yml`](../.github/workflows/build.yml)). Для
+`rust-port` отдельный [Rust CI](../.github/workflows/rust.yml) проверяет MSRV,
+Linux/Windows/macOS и optional desktop feature, но пока не публикует готовые
+артефакты.
 
 Минимально поддерживаемые версии ОС для текущих бинарных сборок:
 
