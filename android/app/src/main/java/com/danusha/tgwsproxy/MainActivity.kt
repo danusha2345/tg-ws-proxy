@@ -1,16 +1,19 @@
 package com.danusha.tgwsproxy
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.provider.Settings
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -33,6 +36,7 @@ class MainActivity : Activity() {
     private lateinit var connectionsText: TextView
     private lateinit var trafficText: TextView
     private lateinit var toggleButton: Button
+    private lateinit var batteryWarningCard: View
     private lateinit var portInput: EditText
     private lateinit var secretInput: EditText
     private lateinit var poolInput: EditText
@@ -40,6 +44,9 @@ class MainActivity : Activity() {
     private lateinit var fakeTlsInput: EditText
     private lateinit var maskingInput: EditText
     private var currentStatus = ProxyStatus("stopped", null, null, 0, 0, 0, 0)
+    private var pendingProxyStart = false
+    private var notificationPermissionRequestInProgress = false
+    private var batteryDialog: AlertDialog? = null
 
     private val refreshStatus = object : Runnable {
         override fun run() {
@@ -59,10 +66,16 @@ class MainActivity : Activity() {
         loadSettings()
         bindActions()
         requestNotificationPermission()
+        handler.postDelayed(::maybeExplainBatteryOptimization, BATTERY_PROMPT_DELAY_MS)
     }
 
     override fun onResume() {
         super.onResume()
+        refreshBatteryOptimizationStatus()
+        if (pendingProxyStart && isBatteryOptimizationDisabled()) {
+            pendingProxyStart = false
+            ProxyService.start(this)
+        }
         handler.removeCallbacks(refreshStatus)
         handler.post(refreshStatus)
     }
@@ -70,6 +83,24 @@ class MainActivity : Activity() {
     override fun onPause() {
         handler.removeCallbacks(refreshStatus)
         super.onPause()
+    }
+
+    override fun onDestroy() {
+        batteryDialog?.dismiss()
+        batteryDialog = null
+        super.onDestroy()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            notificationPermissionRequestInProgress = false
+            maybeExplainBatteryOptimization()
+        }
     }
 
     private fun bindViews() {
@@ -81,6 +112,7 @@ class MainActivity : Activity() {
         connectionsText = findViewById(R.id.connectionsText)
         trafficText = findViewById(R.id.trafficText)
         toggleButton = findViewById(R.id.toggleButton)
+        batteryWarningCard = findViewById(R.id.batteryWarningCard)
         portInput = findViewById(R.id.portInput)
         secretInput = findViewById(R.id.secretInput)
         poolInput = findViewById(R.id.poolInput)
@@ -94,8 +126,16 @@ class MainActivity : Activity() {
             if (currentStatus.isActive) {
                 ProxyService.stop(this)
             } else if (saveSettings(false)) {
-                ProxyService.start(this)
+                if (isBatteryOptimizationDisabled()) {
+                    ProxyService.start(this)
+                } else {
+                    pendingProxyStart = true
+                    showBatteryOptimizationDialog()
+                }
             }
+        }
+        findViewById<Button>(R.id.batterySettingsButton).setOnClickListener {
+            showBatteryOptimizationDialog()
         }
         findViewById<Button>(R.id.telegramButton).setOnClickListener { openTelegram() }
         findViewById<Button>(R.id.copyButton).setOnClickListener { copyLink(false) }
@@ -216,8 +256,76 @@ class MainActivity : Activity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+            notificationPermissionRequestInProgress = true
+            requestPermissions(
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                NOTIFICATION_PERMISSION_REQUEST_CODE,
+            )
         }
+    }
+
+    private fun maybeExplainBatteryOptimization() {
+        if (
+            !isFinishing &&
+            !notificationPermissionRequestInProgress &&
+            !preferences.batteryOptimizationPromptShown &&
+            !isBatteryOptimizationDisabled() &&
+            batteryDialog?.isShowing != true
+        ) {
+            preferences.batteryOptimizationPromptShown = true
+            showBatteryOptimizationDialog()
+        }
+    }
+
+    private fun showBatteryOptimizationDialog() {
+        if (isBatteryOptimizationDisabled()) {
+            pendingProxyStart = false
+            refreshBatteryOptimizationStatus()
+            return
+        }
+        if (batteryDialog?.isShowing == true) return
+
+        batteryDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.battery_dialog_title)
+            .setMessage(R.string.battery_dialog_message)
+            .setPositiveButton(R.string.battery_allow_action) { _, _ ->
+                requestBatteryOptimizationExemption()
+            }
+            .setNegativeButton(R.string.not_now) { _, _ ->
+                pendingProxyStart = false
+            }
+            .setOnDismissListener { batteryDialog = null }
+            .show()
+    }
+
+    // A persistent local proxy is the app's core function and cannot be replaced by WorkManager.
+    @SuppressLint("BatteryLife")
+    private fun requestBatteryOptimizationExemption() {
+        val directRequest = Intent(
+            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            "package:$packageName".toUri(),
+        )
+        val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        val launched = runCatching {
+            startActivity(directRequest)
+        }.recoverCatching {
+            startActivity(fallback)
+        }.isSuccess
+
+        if (!launched) {
+            pendingProxyStart = false
+            Toast.makeText(this, R.string.battery_settings_unavailable, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun refreshBatteryOptimizationStatus() {
+        batteryWarningCard.visibility =
+            if (isBatteryOptimizationDisabled()) View.GONE else View.VISIBLE
+    }
+
+    private fun isBatteryOptimizationDisabled(): Boolean {
+        return getSystemService(PowerManager::class.java)
+            .isIgnoringBatteryOptimizations(packageName)
     }
 
     private fun formatBytes(bytes: Long): String {
@@ -229,5 +337,7 @@ class MainActivity : Activity() {
 
     companion object {
         private const val STATUS_POLL_MS = 1_000L
+        private const val BATTERY_PROMPT_DELAY_MS = 700L
+        private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1
     }
 }

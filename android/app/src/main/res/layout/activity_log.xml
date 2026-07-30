@@ -5,7 +5,10 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_app"
     android:orientation="vertical"
-    android:padding="18dp"
+    android:paddingStart="18dp"
+    android:paddingTop="28dp"
+    android:paddingEnd="18dp"
+    android:paddingBottom="18dp"
     tools:ignore="ButtonStyle">
 
     <TextView
@@ -29,8 +32,11 @@
             <Button
                 android:id="@+id/refreshButton"
                 android:layout_width="wrap_content"
-                android:layout_height="44dp"
+                android:layout_height="wrap_content"
                 android:background="@drawable/bg_secondary"
+                android:minHeight="48dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
                 android:text="@string/refresh"
                 android:textAllCaps="false"
                 android:textColor="@color/paper" />
@@ -38,9 +44,12 @@
             <Button
                 android:id="@+id/shareButton"
                 android:layout_width="wrap_content"
-                android:layout_height="44dp"
+                android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/bg_secondary"
+                android:minHeight="48dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
                 android:text="@string/share"
                 android:textAllCaps="false"
                 android:textColor="@color/paper" />
@@ -48,9 +57,12 @@
             <Button
                 android:id="@+id/clearButton"
                 android:layout_width="wrap_content"
-                android:layout_height="44dp"
+                android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/bg_secondary"
+                android:minHeight="48dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
                 android:text="@string/clear"
                 android:textAllCaps="false"
                 android:textColor="@color/danger" />

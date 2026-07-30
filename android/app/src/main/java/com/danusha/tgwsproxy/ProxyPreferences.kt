@@ -33,6 +33,12 @@ class ProxyPreferences(context: Context) {
             preferences.edit { putBoolean(KEY_DESIRED_RUNNING, value) }
         }
 
+    var batteryOptimizationPromptShown: Boolean
+        get() = preferences.getBoolean(KEY_BATTERY_PROMPT_SHOWN, false)
+        set(value) {
+            preferences.edit { putBoolean(KEY_BATTERY_PROMPT_SHOWN, value) }
+        }
+
     fun load(): ProxySettings {
         return ProxySettings(
             port = preferences.getInt(KEY_PORT, DEFAULT_PORT),
@@ -135,6 +141,7 @@ class ProxyPreferences(context: Context) {
         private const val KEY_SECRET = "secret-encrypted"
         private const val KEY_SECRET_IV = "secret-iv"
         private const val KEY_DESIRED_RUNNING = "desired-running"
+        private const val KEY_BATTERY_PROMPT_SHOWN = "battery-prompt-shown"
         private const val DEFAULT_PORT = 1443
         private const val DEFAULT_POOL_SIZE = 4
         private const val KEYSTORE_NAME = "AndroidKeyStore"
