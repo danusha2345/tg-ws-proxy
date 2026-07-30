@@ -2,5 +2,5 @@ blank_issues_enabled: false
 
 contact_links:
   - name: 📚 Документация
-    url: https://github.com/Flowseal/tg-ws-proxy/tree/main/docs
+    url: https://github.com/danusha2345/tg-ws-proxy/tree/rust-port/docs
     about: Ознакомьтесь с документацией перед созданием issue
