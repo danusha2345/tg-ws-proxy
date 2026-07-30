@@ -52,7 +52,6 @@ jobs:
       - name: Install Rust 1.85.1
         uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
         with:
-          toolchain: 1.85.1
           components: rustfmt, clippy
 
       - name: Restore Cargo cache
@@ -94,8 +93,6 @@ jobs:
 
       - name: Install Rust 1.85.1
         uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
-        with:
-          toolchain: 1.85.1
 
       - name: Restore Cargo cache
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
@@ -176,13 +173,18 @@ jobs:
       - name: Install Rust 1.85.1
         uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
         with:
-          toolchain: 1.85.1
           targets: ${{ matrix.musl_target }}
 
       - name: Build GNU CLI and tray
         run: cargo build --release --locked --features desktop --bins
 
       - name: Build static musl CLI
+        env:
+          CC_aarch64_unknown_linux_musl: musl-gcc
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+          RUSTFLAGS: -C target-feature=+crt-static
         run: >-
           cargo build
           --release
@@ -213,9 +215,20 @@ jobs:
             echo "$binary baseline: $max_glibc"
           done
 
-          file "target/${{ matrix.musl_target }}/release/tg-ws-proxy" \
-            | grep -Eq 'statically linked|static-pie linked'
+          musl_binary="target/${{ matrix.musl_target }}/release/tg-ws-proxy"
+          file "$musl_binary"
+          program_headers="$(readelf --program-headers "$musl_binary")"
+          dynamic_entries="$(readelf --dynamic "$musl_binary")"
+          if grep -q '[[:space:]]INTERP' <<<"$program_headers"; then
+            echo "$musl_binary contains a dynamic interpreter" >&2
+            exit 1
+          fi
+          if grep -q '(NEEDED)' <<<"$dynamic_entries"; then
+            echo "$musl_binary contains dynamic dependencies" >&2
+            exit 1
+          fi
           target/release/tg-ws-proxy --help >/dev/null
+          "$musl_binary" --help >/dev/null
 
       - name: Package release assets
         shell: bash
@@ -253,7 +266,6 @@ jobs:
       - name: Install Rust 1.85.1
         uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
         with:
-          toolchain: 1.85.1
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Restore Cargo cache
