@@ -1,6 +1,6 @@
 [package]
 name = "tg-ws-proxy"
-version = "1.9.0-alpha.1"
+version = "1.9.0-alpha.2"
 edition = "2024"
 rust-version = "1.85"
 description = "Telegram Desktop WebSocket bridge proxy"
@@ -37,6 +37,7 @@ desktop = [
     "dep:directories",
     "dep:fs2",
     "dep:ksni",
+    "dep:native-dialog",
     "dep:open",
     "dep:serde",
     "dep:serde_json",
@@ -80,6 +81,9 @@ ksni = { version = "0.3.6", optional = true }
 [target.'cfg(any(windows, target_os = "macos"))'.dependencies]
 tray-icon = { version = "0.24.2", default-features = false, optional = true }
 winit = { version = "0.30.12", default-features = false, optional = true }
+
+[target.'cfg(windows)'.dependencies]
+native-dialog = { version = "0.9.7", features = ["windows_dpi_awareness", "windows_visual_styles"], optional = true }
 
 [dev-dependencies]
 proptest = "1.10.0"

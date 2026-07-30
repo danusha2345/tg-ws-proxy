@@ -1,6 +1,8 @@
 use std::thread;
 
 use anyhow::{Context, Result};
+#[cfg(windows)]
+use native_dialog::{DialogBuilder, MessageLevel};
 use tokio::sync::mpsc;
 use tracing::warn;
 use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
@@ -132,6 +134,29 @@ impl NativeApp {
         Ok(())
     }
 
+    #[cfg(windows)]
+    fn show_startup_notice(&self) {
+        let text = match self.language {
+            Language::Russian => {
+                "TG WS Proxy запущен и работает в системном трее.\n\n\
+                 Если значок не виден рядом с часами, откройте скрытые значки стрелкой ^."
+            }
+            Language::English => {
+                "TG WS Proxy is running in the system tray.\n\n\
+                 If its icon is not visible next to the clock, open hidden icons with the ^ arrow."
+            }
+        };
+        if let Err(error) = DialogBuilder::message()
+            .set_level(MessageLevel::Info)
+            .set_title("TG WS Proxy")
+            .set_text(text)
+            .alert()
+            .show()
+        {
+            warn!(%error, "failed to show the Windows tray startup notice");
+        }
+    }
+
     fn handle_menu(&self, event: &MenuEvent) {
         let command = match event.id.0.as_str() {
             ID_OPEN_TELEGRAM => Some(WorkerCommand::OpenTelegram),
@@ -156,6 +181,9 @@ impl ApplicationHandler<UserEvent> for NativeApp {
         if let Err(error) = self.build_tray() {
             self.startup_error = Some(error.to_string());
             event_loop.exit();
+        } else {
+            #[cfg(windows)]
+            self.show_startup_notice();
         }
     }
 

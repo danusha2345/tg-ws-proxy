@@ -1,4 +1,5 @@
 use std::net::{IpAddr, UdpSocket};
+use std::path::Path;
 use std::thread;
 
 use anyhow::{Context, Result, anyhow};
@@ -84,7 +85,7 @@ async fn run(
                         }
                     }
                     WorkerCommand::OpenSettings => {
-                        if let Err(action_error) = open::that(&paths.config) {
+                        if let Err(action_error) = open_file(&paths.config) {
                             warn!(
                                 path = %paths.config.display(),
                                 error = %action_error,
@@ -104,7 +105,7 @@ async fn run(
                         .await;
                     }
                     WorkerCommand::OpenLogs => {
-                        if let Err(action_error) = open::that(&paths.log) {
+                        if let Err(action_error) = open_file(&paths.log) {
                             warn!(
                                 path = %paths.log.display(),
                                 error = %action_error,
@@ -204,6 +205,31 @@ async fn next_status(receiver: &mut Option<watch::Receiver<ProxyStatus>>) -> Opt
     receiver.changed().await.ok()?;
     let status = receiver.borrow().clone();
     Some(status)
+}
+
+fn open_file(path: &Path) -> Result<()> {
+    match open::that(path) {
+        Ok(()) => Ok(()),
+        Err(default_error) => {
+            #[cfg(windows)]
+            {
+                warn!(
+                    path = %path.display(),
+                    error = %default_error,
+                    "system file handler failed; opening the file in Notepad"
+                );
+                open::with(path, "notepad.exe").with_context(|| {
+                    format!(
+                        "system file handler failed ({default_error}); Notepad fallback also failed"
+                    )
+                })
+            }
+            #[cfg(not(windows))]
+            {
+                Err(default_error).context("system file handler failed")
+            }
+        }
+    }
 }
 
 fn open_telegram(link: Option<&str>, clipboard: &mut Option<Clipboard>) -> Result<()> {
