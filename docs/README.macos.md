@@ -1,30 +1,47 @@
 # TG WS Proxy для macOS
 
-Перейдите на [страницу релизов](https://github.com/Flowseal/tg-ws-proxy/releases) и скачайте `TgWsProxy_macos_universal.dmg` (универсальная сборка для Apple Silicon и Intel).
+> [!WARNING]
+>
+> Rust-версия пока тестовая и не проходила полноценную проверку на реальных
+> пользовательских окружениях.
 
-1. Откройте образ
-2. Перенесите `TG WS Proxy.app` в папку `Applications`
-3. При первом запуске macOS может попросить подтвердить открытие: **Системные настройки → Конфиденциальность и безопасность → Всё равно открыть**
+## Готовая сборка
 
-Минимально поддерживаемые версии:
+Откройте [Releases](https://github.com/danusha2345/tg-ws-proxy/releases) и
+скачайте `TgWsProxy_macos_universal.dmg`. Сборка содержит Intel и Apple Silicon
+варианты и рассчитана на macOS 11 или новее.
 
-- Intel macOS 10.15+
-- Apple Silicon macOS 11.0+
+Приложение пока не подписано сертификатом Apple и не notarized. При первом
+запуске macOS может потребовать подтвердить открытие в разделе
+**Системные настройки → Конфиденциальность и безопасность**.
+
+В релизе также есть `TgWsProxy_macos_universal.tar.gz` с отдельными CLI и
+tray-бинарниками.
+
+## Сборка из исходников
+
+Установите Xcode Command Line Tools и [Rust](https://rustup.rs/):
+
+```bash
+xcode-select --install
+git clone https://github.com/danusha2345/tg-ws-proxy.git
+cd tg-ws-proxy
+cargo build --release --locked --features desktop --bins
+./target/release/tg-ws-proxy-desktop
+```
+
+CLI с постоянным secret:
+
+```bash
+./target/release/tg-ws-proxy \
+  --secret-file "$HOME/Library/Application Support/tg-ws-proxy/secret"
+```
 
 ## Настройка Telegram Desktop
 
-1. Telegram → **Настройки** → **Продвинутые настройки** → **Тип подключения** → **Прокси**
-2. Добавьте прокси:
-   - **Тип:** MTProto
-   - **Сервер:** `127.0.0.1` (или переопределенный вами)
-   - **Порт:** `1443` (или переопределенный вами)
-   - **Secret:** из настроек или логов
+Откройте напечатанную или скопированную ссылку `tg://proxy`. Для ручной
+настройки добавьте MTProto-прокси:
 
-## Установка из исходников
-
-Подробная инструкция: [BuildFromSource.md](./BuildFromSource.md)
-
-```bash
-pip install -e .
-tg-ws-proxy-tray-macos
-```
+- сервер: `127.0.0.1`;
+- порт: `1443`;
+- secret: значение из ссылки.

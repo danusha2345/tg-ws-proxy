@@ -1,151 +1,149 @@
-<div align="center">
-	<br />
-	<p>
-		<img width="1729" height="910" alt="tgwsproxy" src="./images/workflow.png" />
-	</p>
-</div>
+# TG WS Proxy — Rust
 
-##
+[![Boosty](https://img.shields.io/badge/Boosty-Поддержать-FF7143?style=for-the-badge&logo=boosty&logoColor=white)](https://boosty.to/danusha/donate)
 
-> [!TIP]
+Локальный MTProto-прокси для Telegram Desktop. Он перенаправляет трафик через
+TLS WebSocket и автоматически использует доступный резервный маршрут, не
+требуя отдельного пользовательского сервера для базового режима.
+
+> [!WARNING]
 >
-> ### [🎉 Поддержать меня](./Funding.md)
->
-> **USDT (TRC20)**: `TXPnKs2Ww1RD8JN6nChFUVmi5r2hqrWjuu`  
-> **BTC**: `bc1qr8vd6jelkyyry3m4mq6z5txdx4pl856fu6ss0w`  
-> **ETH**: `0x1417878fdc5047E670a77748B34819b9A49C72F1`  
-> **Другие монеты**: https://nowpayments.io/donation/flowseal
+> Rust-ветка пока не проходила полноценное пользовательское тестирование на
+> реальных окружениях и не готова считаться стабильным релизом. Нужны тесты на
+> Windows, macOS и Linux, а также live-проверки direct WebSocket, Worker/CfProxy,
+> TCP fallback, Fake TLS и tray. Используйте её как тестовую сборку и
+> [сообщайте о найденных проблемах в Issues](https://github.com/danusha2345/tg-ws-proxy/issues).
 
-> [!CAUTION]
->
-> ### Реакция антивирусов
->
-> Антивирусы часто ошибочно помечают приложение как вирус из-за упаковщика.  
-> Если вы не можете скачать из-за блокировки антивирусом, то:
->
-> 1) **Попробуйте скачать версию для Windows 7 (по функциональности она не отличается)**
-> 2) Отключите антивирус на время скачивания, добавьте файл в исключения и включите обратно  
->
-> Всегда проверяйте, что скачиваете из интернета, тем более из непроверенных источников. Всегда лучше смотреть на детекты широко известных антивирусов на VirusTotal
+## Что уже реализовано
 
-# TG WS Proxy
+- MTProto obfuscation init и AES-CTR relay в обоих направлениях;
+- direct TLS WebSocket, domain fronting, Cloudflare Worker/CfProxy и TCP
+  fallback;
+- Fake TLS и HAProxy PROXY protocol v1;
+- пул соединений, лимиты клиентов и размера WebSocket-сообщений;
+- постоянный secret, ротация логов и Docker-образ без root;
+- опциональный нативный tray для Windows 10+, актуальных macOS и Linux.
 
-**Локальный MTProto-прокси** для Telegram Desktop, который **ускоряет работу Telegram**, перенаправляя трафик через WebSocket-соединения. Данные передаются в том же зашифрованном виде, а для работы не нужны сторонние серверы.
+Подробный статус, исправленные ошибки и известные ограничения описаны в
+[документе о Rust-порте](./RUST_PORT.md).
 
-> [!NOTE]
->
-> Ветка `rust-port` переносит консольное ядро на Rust. Состояние порта,
-> исправленные ошибки и команды сборки описаны в
-> [отдельном документе](./RUST_PORT.md).
+## Готовые тестовые сборки
 
-<picture>
-  <source srcset="./images/preview-dark.png" media="(prefers-color-scheme: dark)">
-  <img src="./images/preview-white.png">
-</picture>
+Собственные Rust-сборки публикуются на
+[странице Releases](https://github.com/danusha2345/tg-ws-proxy/releases).
 
-## Навигация
+| Система | Артефакт |
+| --- | --- |
+| Windows 10+ x64 | `TgWsProxy_windows_x64.exe` |
+| Windows 11 ARM64 | `TgWsProxy_windows_arm64.exe` |
+| macOS 11+ Intel / Apple Silicon | `TgWsProxy_macos_universal.dmg` |
+| Linux x86_64 | `TgWsProxy_linux_amd64`, `.deb` или `.rpm` |
+| Linux ARM64 | `TgWsProxy_linux_arm64`, `.deb` или `.rpm` |
 
-- **🚀 Быстрый старт**
-  - **[Windows](./README.windows.md)**
-  - **[macOS](./README.macos.md)**
-  - **[Linux](./README.linux.md)**
-  - **[Docker](./README.docker.md)**
-- [Настройка Cloudflare Worker'а (бесплатный аналог CF-прокси)](./CfWorker.md)
-- [Настройка Cloudflare-домена (CF-прокси)](./CfProxy.md)
-- [Тестовое окружение Telegram (тестовые DC)](./TestDc.md)
-- [Fake TLS + upstream в Nginx](./FakeTlsNginx.md)
-- [Файлы конфигурации Tray-приложения](./TrayConfig.md)
-- [Установка из исходников](./BuildFromSource.md)
-- [Руководство для контрибьюторов](./CONTRIBUTING.md)
+В архивах также есть отдельный CLI. Windows-бинарники пока не подписаны, а
+macOS-приложение не notarized. Rust-сборки для Windows 7 не выпускаются:
+актуальный Rust toolchain эту систему не поддерживает.
 
-## Windows: быстрый вход
+## Сборка из исходников
 
-Перейдите на [страницу релизов](https://github.com/Flowseal/tg-ws-proxy/releases) и скачайте:
+Нужен Rust `1.85` или новее:
 
-- `TgWsProxy_windows.exe` (Windows 10+ x64)
-- `TgWsProxy_windows_arm64.exe` (Windows 10+ ARM64)
-- `TgWsProxy_windows_7_64bit.exe` (Windows 7 x64)
-- `TgWsProxy_windows_7_32bit.exe` (Windows 7 x32)
+```bash
+git clone https://github.com/danusha2345/tg-ws-proxy.git
+cd tg-ws-proxy
+cargo build --release --locked
+./target/release/tg-ws-proxy \
+  --secret-file "$HOME/.local/state/tg-ws-proxy/secret"
+```
 
-При первом запуске откроется окно с инструкцией по подключению Telegram Desktop. **Приложение сворачивается в системный трей.**
+После запуска прокси напечатает ссылку `tg://proxy`. Откройте её в Telegram
+Desktop или добавьте MTProto-прокси вручную:
 
-### Меню трея
+- сервер: `127.0.0.1`;
+- порт: `1443`;
+- secret: значение из напечатанной ссылки.
 
-- **Открыть в Telegram** — автоматически настроить прокси через ссылку `tg://proxy`
-- **Скопировать ссылку** — скопировать ссылку для подключения
-- **Перезапустить прокси** — перезапуск без выхода из приложения
-- **Настройки...** — GUI-редактор конфигурации (версия приложения, опциональная проверка обновлений с GitHub)
-- **Открыть логи** — открыть файл логов
-- **Выход** — остановить прокси и закрыть приложение
+Secret сохраняется в указанном файле и повторно используется при следующих
+запусках. Не публикуйте его и не добавляйте в Git.
 
-### Настройка Telegram Desktop
+### Нативный tray
 
-**Автоматическая настройка**
+```bash
+cargo run --release --locked \
+  --features desktop \
+  --bin tg-ws-proxy-desktop
+```
 
-Щелкните правой кнопкой мыши по значку в трее и выберите **«Открыть в Telegram»**.
+Tray использует тот же Rust runtime. Полный GUI-редактор, auto-update,
+Windows autostart и portable mode пока остаются возможностями legacy
+Python-версии.
 
-Если не сработало (Telegram не открылся с подключением), выполните шаги ниже:
+### Docker
 
-1. Щелкните правой кнопкой мыши по значку в трее и выберите **«Скопировать ссылку»**
-2. Отправьте ссылку в «Избранное» в Telegram и нажмите по ней левой кнопкой мыши
-3. Подключитесь
+```bash
+docker build -t tg-ws-proxy:rust .
+docker volume create tg-ws-proxy-data
+docker run -d \
+  --name tg-ws-proxy \
+  --restart unless-stopped \
+  -p 1443:1443 \
+  -v tg-ws-proxy-data:/data \
+  tg-ws-proxy:rust
+```
 
-**Ручная настройка**
+Полная инструкция: [TG WS Proxy для Docker](./README.docker.md).
 
-1. Telegram → **Настройки** → **Продвинутые настройки** → **Тип подключения** → **Прокси**
-2. Добавьте прокси:
-   - **Тип:** MTProto
-   - **Сервер:** `127.0.0.1` (или переопределенный вами)
-   - **Порт:** `1443` (или переопределенный вами)
-   - **Secret:** из настроек или логов
+## Нужны тестеры
+
+Особенно полезны проверки на Windows, macOS и разных окружениях Linux:
+
+1. запуск CLI и tray;
+2. подключение Telegram по напечатанной ссылке;
+3. сообщения, фото, видео и большие файлы;
+4. direct WebSocket, Worker/CfProxy и TCP fallback;
+5. Fake TLS, sleep/resume и длительная работа.
+
+В отчёте укажите ОС, способ запуска, проверенный маршрут и приложите логи без
+secret. Баги и результаты тестов принимаются в
+[Issues](https://github.com/danusha2345/tg-ws-proxy/issues).
 
 ## Как это работает
 
+```text
+Telegram Desktop → MTProto Proxy (127.0.0.1:1443) → TLS WebSocket → Telegram DC
+                                                        └──────→ TCP fallback
 ```
-Telegram Desktop → MTProto Proxy (127.0.0.1:1443) → WebSocket → Telegram DC
-```
 
-1. Приложение поднимает MTProto прокси на `127.0.0.1:1443`
-2. Перехватывает подключения к IP-адресам Telegram
-3. Извлекает DC ID из MTProto obfuscation init-пакета
-4. Устанавливает WebSocket-соединение (TLS) к соответствующему DC через домены Telegram
-5. Если WS недоступен (302 redirect) — автоматически переключается на CfProxy / прямое TCP-соединение
+Прокси извлекает DC ID из MTProto obfuscation init-пакета, выбирает маршрут и
+перенаправляет зашифрованный поток в соответствующий Telegram DC.
 
-> [!IMPORTANT] 
-> ### Не грузит фото/видео?
-> **Удалите в настройках прокси в DC → IP всё, кроме `4:149.154.167.220`**  
-> **Если это не помогло, полностью очистите это поле**  
-> Подобная проблема встречается на аккаунтах без Premium  
-> Если это не помогло, настройте собственный домен по инструкции: [CfProxy.md](./CfProxy.md)
+<p align="center">
+  <img width="900" alt="Схема работы TG WS Proxy" src="./images/workflow.png" />
+</p>
 
-## Автоматическая сборка
+## Документация
 
-Legacy Python-релизы собираются из спецификаций PyInstaller
-([`packaging/windows.spec`](../packaging/windows.spec),
-[`packaging/macos.spec`](../packaging/macos.spec),
-[`packaging/linux.spec`](../packaging/linux.spec)) workflow
-([`.github/workflows/build.yml`](../.github/workflows/build.yml)). Для
-`rust-port` отдельный [Rust CI](../.github/workflows/rust.yml) проверяет MSRV,
-Linux/Windows/macOS и optional desktop feature, но пока не публикует готовые
-артефакты.
+- [Статус и ограничения Rust-порта](./RUST_PORT.md)
+- [Сборка из исходников](./BuildFromSource.md)
+- [Docker](./README.docker.md)
+- [Cloudflare Worker](./CfWorker.md)
+- [Cloudflare-домен (CfProxy)](./CfProxy.md)
+- [Fake TLS + upstream в Nginx](./FakeTlsNginx.md)
+- [Тестовые DC Telegram](./TestDc.md)
+- [Файлы конфигурации tray](./TrayConfig.md)
+- [Руководство для контрибьюторов](./CONTRIBUTING.md)
 
-Минимально поддерживаемые версии ОС для текущих бинарных сборок:
+### Инструкции по ОС
 
-- Windows 10+ x64 для `TgWsProxy_windows.exe`
-- Windows 10+ ARM64 для `TgWsProxy_windows_arm64.exe`
-- Windows 7 (x64) для `TgWsProxy_windows_7_64bit.exe`
-- Windows 7 (x32) для `TgWsProxy_windows_7_32bit.exe`
-- Intel macOS 10.15+
-- Apple Silicon macOS 11.0+
-- Linux x86_64 (требуется AppIndicator для системного трея)
+- [Windows](./README.windows.md)
+- [macOS](./README.macos.md)
+- [Linux](./README.linux.md)
 
-## Контрибьюторы
+## Происхождение
 
-Спасибо всем, кто помогает развивать проект ❤️
-
-<a href="https://github.com/Flowseal/tg-ws-proxy/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Flowseal/tg-ws-proxy" />
-</a>
+Rust-порт основан на проекте
+[Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy). Python-код
+сохранён в репозитории как эталон поведения и для legacy frontend.
 
 ## Лицензия
 

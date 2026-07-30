@@ -1,0 +1,440 @@
+name: Rust Prerelease
+
+on:
+  push:
+    tags:
+      - "rust-v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify:
+    name: Verify release source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Verify tag, version and branch head
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#rust-v}"
+          cargo_version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)"
+
+          if [[ "$tag_version" != "$cargo_version" ]]; then
+            echo "Tag version $tag_version does not match Cargo version $cargo_version" >&2
+            exit 1
+          fi
+          if [[ ! "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$ ]]; then
+            echo "Rust release tag must describe a prerelease" >&2
+            exit 1
+          fi
+
+          git fetch --no-tags origin \
+            "+refs/heads/rust-port:refs/remotes/origin/rust-port"
+          if [[ "$(git rev-parse refs/remotes/origin/rust-port)" != "$GITHUB_SHA" ]]; then
+            echo "Release tag must point to the current rust-port head" >&2
+            exit 1
+          fi
+
+      - name: Install Rust 1.85.1
+        uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
+        with:
+          toolchain: 1.85.1
+          components: rustfmt, clippy
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          shared-key: release-verify
+          cache-all-crates: false
+          cache-on-failure: false
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --locked --all-targets --features desktop -- -D warnings
+
+      - name: Run tests
+        run: |
+          cargo test --locked --all-targets --no-default-features
+          cargo test --locked --all-targets --features desktop
+
+  build-windows:
+    name: Windows ${{ matrix.arch }}
+    needs: verify
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-2022
+          - arch: arm64
+            runner: windows-11-arm
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Rust 1.85.1
+        uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
+        with:
+          toolchain: 1.85.1
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          shared-key: release-windows-${{ matrix.arch }}
+          cache-all-crates: false
+          cache-on-failure: false
+
+      - name: Build CLI and tray
+        run: cargo build --release --locked --features desktop --bins
+
+      - name: Smoke-test CLI
+        shell: pwsh
+        run: .\target\release\tg-ws-proxy.exe --help
+
+      - name: Package release assets
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^rust-v', ''
+          .\packaging\rust\package-windows.ps1 `
+            -Version $version `
+            -ArchSuffix '${{ matrix.arch }}'
+
+      - name: Upload Windows assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: TgWsProxy-windows-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+  build-linux:
+    name: Linux ${{ matrix.arch }}
+    needs: verify
+    runs-on: ${{ matrix.runner }}
+    container: debian:11-slim
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            deb_arch: amd64
+            rpm_arch: x86_64
+            musl_target: x86_64-unknown-linux-musl
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            deb_arch: arm64
+            rpm_arch: aarch64
+            musl_target: aarch64-unknown-linux-musl
+    steps:
+      - name: Install packaging dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            curl \
+            file \
+            git \
+            musl-tools \
+            pkg-config \
+            rpm \
+            ruby \
+            ruby-dev \
+            xz-utils
+          gem install fpm -v 1.17.0 --no-document
+          rm -rf /var/lib/apt/lists/*
+
+      - name: Checkout tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Rust 1.85.1
+        uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
+        with:
+          toolchain: 1.85.1
+          targets: ${{ matrix.musl_target }}
+
+      - name: Build GNU CLI and tray
+        run: cargo build --release --locked --features desktop --bins
+
+      - name: Build static musl CLI
+        run: >-
+          cargo build
+          --release
+          --locked
+          --no-default-features
+          --bin tg-ws-proxy
+          --target ${{ matrix.musl_target }}
+
+      - name: Validate Linux compatibility baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          for binary in target/release/tg-ws-proxy target/release/tg-ws-proxy-desktop; do
+            max_glibc="$(
+              readelf --version-info "$binary" \
+                | grep -o 'GLIBC_[0-9.]*' \
+                | sort -Vu \
+                | tail -n 1
+            )"
+            if [[ -z "$max_glibc" ]]; then
+              echo "Cannot determine GLIBC baseline for $binary" >&2
+              exit 1
+            fi
+            if [[ "$(printf '%s\n%s\n' "$max_glibc" GLIBC_2.31 | sort -V | tail -n 1)" != GLIBC_2.31 ]]; then
+              echo "$binary requires unsupported $max_glibc" >&2
+              exit 1
+            fi
+            echo "$binary baseline: $max_glibc"
+          done
+
+          file "target/${{ matrix.musl_target }}/release/tg-ws-proxy" \
+            | grep -Eq 'statically linked|static-pie linked'
+          target/release/tg-ws-proxy --help >/dev/null
+
+      - name: Package release assets
+        shell: bash
+        env:
+          ARCH_SUFFIX: ${{ matrix.arch }}
+          DEB_ARCH: ${{ matrix.deb_arch }}
+          RPM_ARCH: ${{ matrix.rpm_arch }}
+          MUSL_TARGET: ${{ matrix.musl_target }}
+        run: |
+          set -euo pipefail
+          export RELEASE_VERSION="${GITHUB_REF_NAME#rust-v}"
+          packaging/rust/package-linux.sh
+
+      - name: Upload Linux assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: TgWsProxy-linux-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+  build-macos:
+    name: macOS universal
+    needs: verify
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Rust 1.85.1
+        uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
+        with:
+          toolchain: 1.85.1
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          shared-key: release-macos-universal
+          cache-all-crates: false
+          cache-on-failure: false
+
+      - name: Build Apple Silicon binaries
+        run: >-
+          cargo build
+          --release
+          --locked
+          --features desktop
+          --bins
+          --target aarch64-apple-darwin
+
+      - name: Build Intel binaries
+        run: >-
+          cargo build
+          --release
+          --locked
+          --features desktop
+          --bins
+          --target x86_64-apple-darwin
+
+      - name: Package universal app and binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          export RELEASE_VERSION="${GITHUB_REF_NAME#rust-v}"
+          packaging/rust/package-macos.sh
+
+      - name: Upload macOS assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: TgWsProxy-macos-universal
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish GitHub prerelease
+    needs:
+      - build-windows
+      - build-linux
+      - build-macos
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: TgWsProxy-*
+          path: dist
+          merge-multiple: true
+
+      - name: Validate release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            TgWsProxy_windows_x64.exe
+            tg-ws-proxy_cli_windows_x64.exe
+            TgWsProxy_windows_x64.zip
+            TgWsProxy_windows_arm64.exe
+            tg-ws-proxy_cli_windows_arm64.exe
+            TgWsProxy_windows_arm64.zip
+            TgWsProxy_linux_amd64
+            tg-ws-proxy_cli_linux_amd64
+            tg-ws-proxy_cli_linux_amd64_musl
+            TgWsProxy_linux_amd64.tar.gz
+            TgWsProxy_linux_amd64.deb
+            TgWsProxy_linux_amd64.rpm
+            TgWsProxy_linux_arm64
+            tg-ws-proxy_cli_linux_arm64
+            tg-ws-proxy_cli_linux_arm64_musl
+            TgWsProxy_linux_arm64.tar.gz
+            TgWsProxy_linux_arm64.deb
+            TgWsProxy_linux_arm64.rpm
+            TgWsProxy_macos_universal.dmg
+            TgWsProxy_macos_universal.tar.gz
+          )
+          for asset in "${required[@]}"; do
+            test -s "dist/$asset" || {
+              echo "Missing or empty release asset: $asset" >&2
+              exit 1
+            }
+          done
+
+          checksum_file="$RUNNER_TEMP/tg-ws-proxy-$GITHUB_RUN_ID-SHA256SUMS.txt"
+          (
+            cd dist
+            find . -maxdepth 1 -type f -printf '%f\0' \
+              | sort -z \
+              | xargs -0 sha256sum >"$checksum_file"
+            install -m 644 "$checksum_file" SHA256SUMS.txt
+            sha256sum --check SHA256SUMS.txt
+          )
+
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#rust-v}"
+          cat >release-notes.md <<EOF
+          > [!WARNING]
+          > Rust-версия **$version** является тестовой и ещё не проходила
+          > полноценное пользовательское тестирование. Нужны проверки CLI и
+          > tray на Windows, macOS и Linux, включая direct WebSocket,
+          > Worker/CfProxy, TCP fallback, Fake TLS, sleep/resume и длительную
+          > работу.
+
+          ## Сборки
+
+          - Windows 10/11 x64: \`TgWsProxy_windows_x64.exe\`
+          - Windows 11 ARM64: \`TgWsProxy_windows_arm64.exe\`
+          - macOS 11+ Intel / Apple Silicon: \`TgWsProxy_macos_universal.dmg\`
+          - Linux x86_64: \`TgWsProxy_linux_amd64\`, \`.deb\`, \`.rpm\`
+          - Linux ARM64: \`TgWsProxy_linux_arm64\`, \`.deb\`, \`.rpm\`
+          - Отдельные CLI находятся в файлах \`tg-ws-proxy_cli_*\`; Linux
+            также получает статические musl-варианты.
+
+          Windows-бинарники пока не подписаны. macOS-приложение подписано
+          ad-hoc, но не notarized. Windows 7 этой Rust-версией не
+          поддерживается.
+
+          Контрольные суммы всех файлов: \`SHA256SUMS.txt\`.
+
+          ### [❤️ Поддержать](https://boosty.to/danusha/donate)
+          EOF
+
+      - name: Create draft and upload assets
+        shell: bash
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          title="TG WS Proxy Rust ${tag#rust-v} — тестовая сборка"
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            is_draft="$(
+              gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" \
+                --jq '.draft'
+            )"
+            if [[ "$is_draft" != true ]]; then
+              echo "Release $tag already exists and is not a draft" >&2
+              exit 1
+            fi
+            gh release edit "$tag" \
+              --title "$title" \
+              --notes-file release-notes.md
+          else
+            gh release create "$tag" \
+              --verify-tag \
+              --draft \
+              --prerelease \
+              --title "$title" \
+              --notes-file release-notes.md
+          fi
+
+          gh release upload "$tag" dist/* --clobber
+
+      - name: Publish prerelease
+        shell: bash
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease
+          gh release view "$GITHUB_REF_NAME" \
+            --json isDraft,isPrerelease,url,assets \
+            --jq '{
+              url,
+              draft: .isDraft,
+              prerelease: .isPrerelease,
+              assets: [.assets[].name]
+            }'

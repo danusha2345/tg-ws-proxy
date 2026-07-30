@@ -564,7 +564,7 @@ jobs:
           name: "TG WS Proxy ${{ github.event.inputs.version }}"
           body: |
             --- 
-            ### [❤️ Поддержать развитие проекта](https://github.com/Flowseal/tg-ws-proxy/blob/main/docs/Funding.md)
+            ### [❤️ Поддержать](https://boosty.to/danusha/donate)
 
             > [!TIP]
             > Не можете скачать?

@@ -1,51 +1,56 @@
 # TG WS Proxy для Linux
 
+> [!WARNING]
+>
+> Rust-версия пока тестовая и не проходила полноценную проверку на реальных
+> пользовательских окружениях.
+
 ## Готовые сборки
 
-Для Debian/Ubuntu скачайте со [страницы релизов](https://github.com/Flowseal/tg-ws-proxy/releases) пакет `TgWsProxy_linux_amd64.deb`.
+На [странице Releases](https://github.com/danusha2345/tg-ws-proxy/releases)
+публикуются:
 
-Для Arch и основанных на Arch дистрибутивов подготовлены пакеты в AUR:
+| Архитектура | Бинарник | Пакеты |
+| --- | --- | --- |
+| x86_64 | `TgWsProxy_linux_amd64` | `.deb`, `.rpm` |
+| ARM64 | `TgWsProxy_linux_arm64` | `.deb`, `.rpm` |
 
-- [tg-ws-proxy-bin](https://aur.archlinux.org/packages/tg-ws-proxy-bin)
-- [tg-ws-proxy-git](https://aur.archlinux.org/packages/tg-ws-proxy-git)
-- [tg-ws-proxy-cli](https://aur.archlinux.org/packages/tg-ws-proxy-cli)
+Основной бинарник запускает tray. Отдельные `tg-ws-proxy_cli_linux_*` запускают
+только консольный прокси; варианты с суффиксом `_musl` собраны статически.
 
-```shell
-# Установка без AUR-helper
-git clone https://aur.archlinux.org/tg-ws-proxy-bin.git
-cd tg-ws-proxy-bin
-makepkg -si
-
-# При помощи AUR-helper
-paru -S tg-ws-proxy-bin
-
-# Для пакета -cli запуск через systemd (8888 — номер порта; secret можно сгенерировать командой openssl rand -hex 16)
-sudo systemctl start tg-ws-proxy@8888:3075abe65830f0325116bb0416cadf9f
-```
-
-Для остальных дистрибутивов можно использовать `TgWsProxy_linux_amd64` (бинарный файл для x86_64).
+После скачивания отдельного бинарника:
 
 ```bash
 chmod +x TgWsProxy_linux_amd64
 ./TgWsProxy_linux_amd64
 ```
 
-При первом запуске откроется окно с инструкцией. Приложение работает в системном трее (требуется AppIndicator).
+Для работы tray нужен запущенный пользовательский D-Bus и реализация
+StatusNotifierItem/AppIndicator в окружении рабочего стола.
+
+## Сборка из исходников
+
+Установите [Rust](https://rustup.rs/), затем:
+
+```bash
+git clone https://github.com/danusha2345/tg-ws-proxy.git
+cd tg-ws-proxy
+cargo build --release --locked --features desktop --bins
+./target/release/tg-ws-proxy-desktop
+```
+
+CLI с постоянным secret:
+
+```bash
+./target/release/tg-ws-proxy \
+  --secret-file "$HOME/.local/state/tg-ws-proxy/secret"
+```
 
 ## Настройка Telegram Desktop
 
-1. Telegram → **Настройки** → **Продвинутые настройки** → **Тип подключения** → **Прокси**
-2. Добавьте прокси:
-   - **Тип:** MTProto
-   - **Сервер:** `127.0.0.1` (или переопределенный вами)
-   - **Порт:** `1443` (или переопределенный вами)
-   - **Secret:** из настроек или логов
+Откройте напечатанную или скопированную ссылку `tg://proxy`. Для ручной
+настройки добавьте MTProto-прокси:
 
-## Установка из исходников
-
-Подробная инструкция: [BuildFromSource.md](./BuildFromSource.md)
-
-```bash
-pip install -e .
-tg-ws-proxy-tray-linux
-```
+- сервер: `127.0.0.1`;
+- порт: `1443`;
+- secret: значение из ссылки.

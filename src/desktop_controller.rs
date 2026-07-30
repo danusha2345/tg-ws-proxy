@@ -172,9 +172,8 @@ mod tests {
         };
 
         for _ in 0..32 {
-            let error = match DesktopProxyController::start(config.clone()).await {
-                Ok(_) => panic!("occupied port must fail startup"),
-                Err(error) => error,
+            let Err(error) = DesktopProxyController::start(config.clone()).await else {
+                panic!("occupied port must fail startup");
             };
             assert!(
                 error.to_string().contains("failed to listen"),

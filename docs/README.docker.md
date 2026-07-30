@@ -8,7 +8,6 @@ git clone https://github.com/danusha2345/tg-ws-proxy.git
 
 # Переходим в папку с проектом
 cd tg-ws-proxy
-git switch rust-port
 
 # Собираем образ
 docker build -t tg-ws-proxy:rust .
