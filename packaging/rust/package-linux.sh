@@ -79,7 +79,10 @@ EOF
 DEB_ROOT="$WORK_DIR/deb-root"
 cp -a "$PACKAGE_ROOT" "$DEB_ROOT"
 mkdir -p "$DEB_ROOT/DEBIAN"
-DEB_VERSION="${RELEASE_VERSION//-/~}"
+DEB_VERSION="${RELEASE_VERSION%%-*}"
+if [[ "$RELEASE_VERSION" == *-* ]]; then
+    DEB_VERSION+="~${RELEASE_VERSION#*-}"
+fi
 
 cat >"$DEB_ROOT/DEBIAN/control" <<EOF
 Package: tg-ws-proxy
