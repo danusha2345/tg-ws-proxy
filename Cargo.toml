@@ -17,6 +17,10 @@ include = [
     "docs/RUST_PORT.md",
 ]
 
+[workspace]
+members = ["crates/android-bridge"]
+resolver = "2"
+
 [lib]
 name = "tg_ws_proxy"
 path = "src/lib.rs"

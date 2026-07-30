@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#07111C</color>
+    <color name="panel">#0D2133</color>
+    <color name="panel_raised">#123047</color>
+    <color name="signal">#58D6FF</color>
+    <color name="running">#52D18A</color>
+    <color name="warning">#FFC857</color>
+    <color name="danger">#FF6B74</color>
+    <color name="paper">#EAF7FF</color>
+    <color name="muted">#91AFC2</color>
+</resources>

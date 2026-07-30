@@ -1,0 +1,163 @@
+name: Android Prerelease
+
+on:
+  push:
+    tags:
+      - "android-v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish Android prerelease
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Verify tag, versions and branch head
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#android-v}"
+          app_version="$(
+            sed -n 's/.*versionName = "\(.*\)"/\1/p' \
+              android/app/build.gradle.kts | head -n 1
+          )"
+          bridge_version="$(
+            sed -n 's/^version = "\(.*\)"/\1/p' \
+              crates/android-bridge/Cargo.toml | head -n 1
+          )"
+
+          test "$tag_version" = "$app_version"
+          test "$tag_version" = "$bridge_version"
+          [[ "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$ ]]
+
+          git fetch --no-tags origin \
+            "+refs/heads/android-port:refs/remotes/origin/android-port"
+          test "$(git rev-parse refs/remotes/origin/android-port)" = "$GITHUB_SHA"
+
+      - name: Set up Java 21
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+
+      - name: Install Android components
+        shell: bash
+        run: >-
+          sdkmanager
+          "platforms;android-36"
+          "build-tools;36.0.0"
+          "ndk;28.2.13676358"
+
+      - name: Install Rust and Android targets
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+          components: rustfmt, clippy
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+        with:
+          shared-key: android-release
+          cache-all-crates: false
+          cache-on-failure: false
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --version 4.1.2 --locked
+
+      - name: Verify Rust bridge
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --locked -p tg-ws-proxy-android --all-targets -- -D warnings
+          cargo test --locked -p tg-ws-proxy-android
+
+      - name: Test, lint and build release APKs
+        working-directory: android
+        run: ./gradlew --no-daemon testDebugUnitTest lintRelease assembleRelease
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          output=android/app/build/outputs/apk/release
+          universal="$(find "$output" -name '*universal*release.apk' -print -quit)"
+          arm64="$(find "$output" -name '*arm64-v8a*release.apk' -print -quit)"
+          test -s "$universal"
+          test -s "$arm64"
+
+          cp "$universal" dist/TgWsProxy_android_universal.apk
+          cp "$arm64" dist/TgWsProxy_android_arm64-v8a.apk
+
+          apksigner verify --verbose --print-certs dist/TgWsProxy_android_universal.apk
+          unzip -l dist/TgWsProxy_android_universal.apk \
+            | grep -q 'lib/arm64-v8a/libtg_ws_proxy_android.so'
+          unzip -l dist/TgWsProxy_android_universal.apk \
+            | grep -q 'lib/armeabi-v7a/libtg_ws_proxy_android.so'
+          unzip -l dist/TgWsProxy_android_universal.apk \
+            | grep -q 'lib/x86_64/libtg_ws_proxy_android.so'
+
+          (
+            cd dist
+            sha256sum TgWsProxy_android_*.apk >SHA256SUMS-android.txt
+            sha256sum --check SHA256SUMS-android.txt
+          )
+
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#android-v}"
+          cat >release-notes.md <<EOF
+          > [!WARNING]
+          > Android-версия **$version** экспериментальная и ещё не проверена
+          > с Telegram на реальном телефоне. Нужны тесты Wi-Fi/мобильной сети,
+          > выключенного экрана, энергосбережения и длительной работы.
+
+          ## Первая Android-сборка
+
+          - локальное Rust-ядро на \`127.0.0.1\`;
+          - Android Foreground Service с постоянным уведомлением;
+          - запуск и остановка, статус, счётчики соединений и трафика;
+          - открытие Telegram и копирование \`tg://proxy\`;
+          - Worker/CfProxy, TCP fallback, Fake TLS и masking upstream;
+          - secret хранится с защитой Android Keystore;
+          - просмотр, очистка и отправка логов;
+          - русский и английский интерфейс.
+
+          Для большинства телефонов используйте
+          \`TgWsProxy_android_arm64-v8a.apk\`. Универсальный APK также содержит
+          \`armeabi-v7a\` и \`x86_64\`.
+
+          Первый alpha-релиз подписан тестовым ключом GitHub Actions. Следующая
+          версия с постоянным release key может потребовать переустановку.
+
+          Контрольные суммы: \`SHA256SUMS-android.txt\`.
+
+          ### [❤️ Поддержать](https://boosty.to/danusha/donate)
+          EOF
+
+      - name: Publish GitHub prerelease
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          name: TG WS Proxy Android ${{ github.ref_name }} — тестовая сборка
+          body_path: release-notes.md
+          prerelease: true
+          draft: false
+          files: dist/*
+          fail_on_unmatched_files: true
