@@ -2,6 +2,11 @@
 
 [![Boosty](https://img.shields.io/badge/Boosty-Поддержать-FF7143?style=for-the-badge&logo=boosty&logoColor=white)](https://boosty.to/danusha/donate)
 
+### Сказать спасибо автору
+
+- USDT (TRC20): `TKW1yLVa8F1A25vfuPaYoa891oLh1aLN7S`
+- GRAM (TON): `UQCYT0YE53DU3Zp957ouuwRn-lF8STtbwuRzjn6CMJcXiP0R`
+
 Локальный MTProto-прокси для Telegram Desktop и Android. Он перенаправляет
 трафик через TLS WebSocket и автоматически использует доступный резервный
 маршрут, не требуя отдельного пользовательского сервера для базового режима.
