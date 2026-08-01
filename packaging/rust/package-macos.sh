@@ -52,6 +52,16 @@ mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
 install -m 755 \
     "$UNIVERSAL_DIR/tg-ws-proxy-desktop" \
     "$APP_PATH/Contents/MacOS/TG WS Proxy"
+ICONSET="$WORK_DIR/TgWsProxy.iconset"
+mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+    sips -z "$size" "$size" "$PROJECT_DIR/assets/generated/icon-1024.png" \
+        --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+    double=$((size * 2))
+    sips -z "$double" "$double" "$PROJECT_DIR/assets/generated/icon-1024.png" \
+        --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP_PATH/Contents/Resources/TgWsProxy.icns"
 BASE_VERSION="${RELEASE_VERSION%%-*}"
 
 cat >"$APP_PATH/Contents/Info.plist" <<EOF
@@ -68,6 +78,8 @@ cat >"$APP_PATH/Contents/Info.plist" <<EOF
   <string>TG WS Proxy</string>
   <key>CFBundleIdentifier</key>
   <string>io.github.danusha2345.tg-ws-proxy</string>
+  <key>CFBundleIconFile</key>
+  <string>TgWsProxy</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>

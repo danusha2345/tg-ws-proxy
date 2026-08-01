@@ -6,6 +6,7 @@ mod native;
 mod paths;
 #[cfg(not(any(target_os = "linux", windows, target_os = "macos")))]
 mod unsupported;
+mod update;
 mod worker;
 
 use std::io;
@@ -45,6 +46,9 @@ pub(crate) enum WorkerCommand {
     OpenSettings,
     Restart,
     OpenLogs,
+    CheckUpdates,
+    DownloadUpdate,
+    InstallUpdate,
     Exit,
 }
 
@@ -52,6 +56,7 @@ pub(crate) enum WorkerCommand {
 pub(crate) enum WorkerEvent {
     Config { language: Language, link: String },
     Status(ProxyStatus),
+    Update(update::UpdateState),
     Exited,
 }
 
@@ -101,6 +106,40 @@ impl Labels {
         match self.language {
             Language::Russian => "Открыть логи",
             Language::English => "Open logs",
+        }
+    }
+
+    pub(crate) fn update(&self, state: &update::UpdateState) -> String {
+        use update::UpdateState;
+        match (self.language, state) {
+            (Language::Russian, UpdateState::Idle) => "Проверить обновления".to_owned(),
+            (Language::Russian, UpdateState::Checking) => "Проверка обновлений…".to_owned(),
+            (Language::Russian, UpdateState::Current) => "Установлена актуальная версия".to_owned(),
+            (Language::Russian, UpdateState::Available { version }) => {
+                format!("Скачать обновление {version}")
+            }
+            (Language::Russian, UpdateState::Downloading { version }) => {
+                format!("Скачивается {version}…")
+            }
+            (Language::Russian, UpdateState::Ready { version }) => {
+                format!("Установить обновление {version}")
+            }
+            (Language::Russian, UpdateState::Failed) => "Повторить проверку обновлений".to_owned(),
+            (Language::English, UpdateState::Idle) => "Check for updates".to_owned(),
+            (Language::English, UpdateState::Checking) => "Checking for updates…".to_owned(),
+            (Language::English, UpdateState::Current) => {
+                "The latest version is installed".to_owned()
+            }
+            (Language::English, UpdateState::Available { version }) => {
+                format!("Download update {version}")
+            }
+            (Language::English, UpdateState::Downloading { version }) => {
+                format!("Downloading {version}…")
+            }
+            (Language::English, UpdateState::Ready { version }) => {
+                format!("Install update {version}")
+            }
+            (Language::English, UpdateState::Failed) => "Retry update check".to_owned(),
         }
     }
 

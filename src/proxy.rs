@@ -548,6 +548,41 @@ impl Proxy {
         let mut crypto = Some(crypto);
         let mut workers = self.inner.config.cfproxy_worker_domains.clone();
         shuffle(&mut workers);
+        if !test {
+            if let Some((websocket, worker)) = self
+                .inner
+                .pool
+                .get_worker(client_init.dc, fallback_ip, workers.clone())
+                .await
+            {
+                if let Err(error) = websocket.sender.send_binary(&relay_init).await {
+                    debug!(%worker, %error, "pooled Worker WebSocket failed before client data");
+                    websocket.close().await;
+                } else {
+                    self.inner.pool.report_worker_success(client_init.dc).await;
+                    Stats::increment(&self.inner.stats.connections_cfproxy);
+                    info!(
+                        label = %prepared.as_ref().expect("session is available").label,
+                        dc = client_init.dc,
+                        media = client_init.media,
+                        route = "cloudflare-worker-pool",
+                        domain = %worker,
+                        "upstream route connected"
+                    );
+                    bridge_websocket(
+                        prepared.take().expect("session consumed once"),
+                        websocket,
+                        crypto.take().expect("crypto consumed once"),
+                        None,
+                        Arc::clone(&self.inner.stats),
+                        client_init.dc,
+                        client_init.media,
+                    )
+                    .await?;
+                    return Ok(());
+                }
+            }
+        }
         for worker in workers {
             let path = form_urlencoded::Serializer::new(String::new())
                 .append_pair("dst", &fallback_ip.to_string())
@@ -563,6 +598,9 @@ impl Proxy {
                         debug!(%worker, %error, "Worker WebSocket failed before client data");
                         websocket.close().await;
                         continue;
+                    }
+                    if !test {
+                        self.inner.pool.report_worker_success(client_init.dc).await;
                     }
                     Stats::increment(&self.inner.stats.connections_cfproxy);
                     info!(
