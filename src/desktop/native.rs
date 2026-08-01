@@ -13,6 +13,7 @@ use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::WindowId;
 
 use super::icon;
+use super::update::UpdateState;
 use super::{Labels, Language, WorkerCommand, WorkerEvent};
 use crate::desktop_controller::ProxyStatus;
 
@@ -21,6 +22,7 @@ const ID_COPY_LINK: &str = "copy-link";
 const ID_OPEN_SETTINGS: &str = "open-settings";
 const ID_RESTART: &str = "restart";
 const ID_OPEN_LOGS: &str = "open-logs";
+const ID_UPDATE: &str = "update";
 const ID_EXIT: &str = "exit";
 
 #[derive(Debug)]
@@ -36,11 +38,17 @@ struct NativeMenu {
     open_settings: MenuItem,
     restart: MenuItem,
     open_logs: MenuItem,
+    update: MenuItem,
     exit: MenuItem,
 }
 
 impl NativeMenu {
-    fn build(language: Language, status: &ProxyStatus, link_ready: bool) -> Result<(Menu, Self)> {
+    fn build(
+        language: Language,
+        status: &ProxyStatus,
+        link_ready: bool,
+        update: &UpdateState,
+    ) -> Result<(Menu, Self)> {
         let labels = Labels::new(language);
         let menu = Menu::new();
         let items = Self {
@@ -55,6 +63,12 @@ impl NativeMenu {
             open_settings: MenuItem::with_id(ID_OPEN_SETTINGS, labels.open_settings(), true, None),
             restart: MenuItem::with_id(ID_RESTART, labels.restart(), true, None),
             open_logs: MenuItem::with_id(ID_OPEN_LOGS, labels.open_logs(), true, None),
+            update: MenuItem::with_id(
+                ID_UPDATE,
+                labels.update(update),
+                update_is_actionable(update),
+                None,
+            ),
             exit: MenuItem::with_id(ID_EXIT, labels.exit(), true, None),
         };
         menu.append(&items.status)?;
@@ -65,12 +79,19 @@ impl NativeMenu {
         menu.append(&items.open_settings)?;
         menu.append(&items.restart)?;
         menu.append(&items.open_logs)?;
+        menu.append(&items.update)?;
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items.exit)?;
         Ok((menu, items))
     }
 
-    fn update(&self, language: Language, status: &ProxyStatus, link_ready: bool) {
+    fn update(
+        &self,
+        language: Language,
+        status: &ProxyStatus,
+        link_ready: bool,
+        update: &UpdateState,
+    ) {
         let labels = Labels::new(language);
         let link_ready = link_ready && matches!(status, ProxyStatus::Running);
         self.status.set_text(labels.status(status));
@@ -81,6 +102,8 @@ impl NativeMenu {
         self.open_settings.set_text(labels.open_settings());
         self.restart.set_text(labels.restart());
         self.open_logs.set_text(labels.open_logs());
+        self.update.set_text(labels.update(update));
+        self.update.set_enabled(update_is_actionable(update));
         self.exit.set_text(labels.exit());
     }
 }
@@ -90,6 +113,7 @@ struct NativeApp {
     language: Language,
     status: ProxyStatus,
     link_ready: bool,
+    update: UpdateState,
     menu: Option<NativeMenu>,
     tray: Option<TrayIcon>,
     startup_error: Option<String>,
@@ -104,7 +128,7 @@ impl NativeApp {
 
     fn update_menu(&self) {
         if let Some(menu) = &self.menu {
-            menu.update(self.language, &self.status, self.link_ready);
+            menu.update(self.language, &self.status, self.link_ready, &self.update);
         }
         if let Some(tray) = &self.tray {
             let tooltip = Labels::new(self.language).status(&self.status);
@@ -116,7 +140,8 @@ impl NativeApp {
 
     fn build_tray(&mut self) -> Result<()> {
         let labels = Labels::new(self.language);
-        let (menu, menu_items) = NativeMenu::build(self.language, &self.status, self.link_ready)?;
+        let (menu, menu_items) =
+            NativeMenu::build(self.language, &self.status, self.link_ready, &self.update)?;
         let bitmap = icon::render(64);
         let icon = Icon::from_rgba(bitmap.rgba, bitmap.width, bitmap.height)
             .context("failed to create the native tray icon")?;
@@ -164,6 +189,7 @@ impl NativeApp {
             ID_OPEN_SETTINGS => Some(WorkerCommand::OpenSettings),
             ID_RESTART => Some(WorkerCommand::Restart),
             ID_OPEN_LOGS => Some(WorkerCommand::OpenLogs),
+            ID_UPDATE => Some(update_command(&self.update)),
             ID_EXIT => Some(WorkerCommand::Exit),
             _ => None,
         };
@@ -197,6 +223,10 @@ impl ApplicationHandler<UserEvent> for NativeApp {
             }
             UserEvent::Worker(WorkerEvent::Status(status)) => {
                 self.status = status;
+                self.update_menu();
+            }
+            UserEvent::Worker(WorkerEvent::Update(update)) => {
+                self.update = update;
                 self.update_menu();
             }
             UserEvent::Worker(WorkerEvent::Exited) => event_loop.exit(),
@@ -247,6 +277,7 @@ pub(super) fn run(
         language,
         status: ProxyStatus::Starting,
         link_ready: false,
+        update: UpdateState::Idle,
         menu: None,
         tray: None,
         startup_error: None,
@@ -263,4 +294,23 @@ pub(super) fn run(
         anyhow::bail!("{error}");
     }
     Ok(())
+}
+
+fn update_is_actionable(state: &UpdateState) -> bool {
+    !matches!(
+        state,
+        UpdateState::Checking | UpdateState::Downloading { .. }
+    )
+}
+
+fn update_command(state: &UpdateState) -> WorkerCommand {
+    match state {
+        UpdateState::Available { .. } => WorkerCommand::DownloadUpdate,
+        UpdateState::Ready { .. } => WorkerCommand::InstallUpdate,
+        UpdateState::Idle
+        | UpdateState::Checking
+        | UpdateState::Current
+        | UpdateState::Downloading { .. }
+        | UpdateState::Failed => WorkerCommand::CheckUpdates,
+    }
 }

@@ -7,6 +7,7 @@ use arboard::Clipboard;
 use tokio::sync::{mpsc, watch};
 use tracing::{debug, error, info, warn};
 
+use super::update::{self, ReleaseInfo, UpdateState};
 use super::{AppPaths, Language, WorkerCommand, WorkerEvent};
 use crate::desktop_config::DesktopConfig;
 use crate::desktop_controller::{DesktopProxyController, ProxyStatus};
@@ -43,6 +44,7 @@ pub(super) fn spawn(paths: AppPaths) -> Result<WorkerHandle> {
     })
 }
 
+#[allow(clippy::too_many_lines)]
 async fn run(
     paths: AppPaths,
     mut command_rx: mpsc::UnboundedReceiver<WorkerCommand>,
@@ -52,6 +54,8 @@ async fn run(
     let mut status_rx = None;
     let mut current_link = None;
     let mut clipboard = None;
+    let mut latest_update = None;
+    let mut downloaded_update = None;
 
     start_proxy(
         &paths,
@@ -61,6 +65,9 @@ async fn run(
         &mut current_link,
     )
     .await;
+    if DesktopConfig::load_or_create(&paths.config).is_ok_and(|config| config.check_updates) {
+        check_updates(event_tx, &mut latest_update).await;
+    }
 
     loop {
         tokio::select! {
@@ -113,6 +120,49 @@ async fn run(
                             );
                         }
                     }
+                    WorkerCommand::CheckUpdates => {
+                        check_updates(event_tx, &mut latest_update).await;
+                    }
+                    WorkerCommand::DownloadUpdate => {
+                        if let Some(release) = latest_update.as_ref() {
+                            let version = release.version.to_string();
+                            let _ = event_tx.send(WorkerEvent::Update(UpdateState::Downloading {
+                                version: version.clone(),
+                            }));
+                            match update::download_update(release, &paths.directory.join("updates")).await {
+                                Ok(path) => {
+                                    downloaded_update = Some(path.clone());
+                                    let _ = event_tx.send(WorkerEvent::Update(UpdateState::Ready {
+                                        version,
+                                    }));
+                                }
+                                Err(error) => {
+                                    warn!(%error, "failed to download desktop update");
+                                    let _ = event_tx.send(WorkerEvent::Update(UpdateState::Failed));
+                                }
+                            }
+                        } else {
+                            check_updates(event_tx, &mut latest_update).await;
+                        }
+                    }
+                    WorkerCommand::InstallUpdate => {
+                        let Some(path) = downloaded_update.as_deref() else {
+                            let _ = event_tx.send(WorkerEvent::Update(UpdateState::Failed));
+                            continue;
+                        };
+                        match update::launch(path) {
+                            Ok(should_exit) if should_exit => {
+                                stop_proxy(event_tx, &mut controller, &mut status_rx).await;
+                                return Ok(());
+                            }
+                            Ok(false) => {}
+                            Ok(true) => unreachable!("handled above"),
+                            Err(error) => {
+                                warn!(%error, "failed to launch desktop update");
+                                let _ = event_tx.send(WorkerEvent::Update(UpdateState::Failed));
+                            }
+                        }
+                    }
                     WorkerCommand::Exit => {
                         stop_proxy(event_tx, &mut controller, &mut status_rx).await;
                         return Ok(());
@@ -128,6 +178,28 @@ async fn run(
                     None => status_rx = None,
                 }
             }
+        }
+    }
+}
+
+async fn check_updates(
+    event_tx: &mpsc::UnboundedSender<WorkerEvent>,
+    latest_update: &mut Option<ReleaseInfo>,
+) {
+    let _ = event_tx.send(WorkerEvent::Update(UpdateState::Checking));
+    match update::find_update().await {
+        Ok(Some(release)) => {
+            let version = release.version.to_string();
+            *latest_update = Some(release);
+            let _ = event_tx.send(WorkerEvent::Update(UpdateState::Available { version }));
+        }
+        Ok(None) => {
+            *latest_update = None;
+            let _ = event_tx.send(WorkerEvent::Update(UpdateState::Current));
+        }
+        Err(error) => {
+            warn!(%error, "failed to check desktop updates");
+            let _ = event_tx.send(WorkerEvent::Update(UpdateState::Failed));
         }
     }
 }
@@ -344,7 +416,7 @@ mod tests {
                     assert!(error.contains("failed to listen"));
                     saw_failure = true;
                 }
-                WorkerEvent::Status(_) | WorkerEvent::Exited => {}
+                WorkerEvent::Status(_) | WorkerEvent::Update(_) | WorkerEvent::Exited => {}
             }
         }
         assert!(!published_ready_link);

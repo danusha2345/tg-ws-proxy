@@ -52,6 +52,7 @@ PACKAGE_ROOT="$WORK_DIR/package-root"
 mkdir -p \
     "$PACKAGE_ROOT/usr/bin" \
     "$PACKAGE_ROOT/usr/share/applications" \
+    "$PACKAGE_ROOT/usr/share/icons/hicolor/256x256/apps" \
     "$PACKAGE_ROOT/usr/share/doc/tg-ws-proxy"
 
 install -m 755 "$GNU_CLI" "$PACKAGE_ROOT/usr/bin/tg-ws-proxy"
@@ -62,6 +63,8 @@ install -m 644 "$PROJECT_DIR/packaging/rust/README.md" \
     "$PACKAGE_ROOT/usr/share/doc/tg-ws-proxy/README.md"
 install -m 644 "$PROJECT_DIR/docs/RUST_PORT.md" \
     "$PACKAGE_ROOT/usr/share/doc/tg-ws-proxy/RUST_PORT.md"
+install -m 644 "$PROJECT_DIR/assets/generated/icon-256.png" \
+    "$PACKAGE_ROOT/usr/share/icons/hicolor/256x256/apps/tg-ws-proxy.png"
 
 cat >"$PACKAGE_ROOT/usr/share/applications/tg-ws-proxy.desktop" <<'EOF'
 [Desktop Entry]
@@ -73,6 +76,7 @@ Exec=tg-ws-proxy-desktop
 Terminal=false
 Categories=Network;
 StartupNotify=false
+Icon=tg-ws-proxy
 Keywords=telegram;proxy;websocket;
 EOF
 

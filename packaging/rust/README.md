@@ -1,9 +1,8 @@
-# TG WS Proxy — тестовая Rust-сборка
+# TG WS Proxy — Rust
 
-Эта сборка пока не проходила полноценное пользовательское тестирование.
-Нужны проверки CLI и tray на Windows, macOS и Linux, включая direct
-WebSocket, Worker/CfProxy, TCP fallback, Fake TLS, sleep/resume и длительную
-работу.
+Tray проверен на Windows 11. macOS, Linux и Windows ARM64 проходят CI, но им
+ещё полезны live-проверки на реальном железе, включая direct WebSocket,
+Worker/CfProxy, TCP fallback, Fake TLS, sleep/resume и длительную работу.
 
 ## Содержимое
 
@@ -27,6 +26,8 @@ Tray использует совместимый `TgWsProxy/config.json` и пр
 действия для запуска, настройки и подключения Telegram. На Windows после
 запуска показывается сообщение о работе в системном трее, а настройки и логи
 открываются в Блокноте, если системная файловая ассоциация отсутствует.
+Через меню tray можно скачать стабильное обновление из GitHub Releases;
+скачанный файл проверяется по `SHA256SUMS.txt`.
 
 Не публикуйте secret и не прикладывайте его к отчёту об ошибке.
 

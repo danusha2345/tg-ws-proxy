@@ -5,6 +5,7 @@ use tokio::sync::mpsc;
 use tracing::warn;
 
 use super::icon;
+use super::update::UpdateState;
 use super::{Labels, Language, WorkerCommand, WorkerEvent};
 use crate::desktop_controller::ProxyStatus;
 
@@ -13,6 +14,7 @@ struct LinuxTray {
     language: Language,
     link: String,
     proxy_status: ProxyStatus,
+    update: UpdateState,
     icons: Vec<Icon>,
 }
 
@@ -105,6 +107,12 @@ impl ksni::Tray for LinuxTray {
             Self::action(labels.open_logs(), "text-x-log", true, |tray| {
                 tray.send(WorkerCommand::OpenLogs);
             }),
+            Self::action(
+                &labels.update(&self.update),
+                "system-software-update",
+                update_is_actionable(&self.update),
+                |tray| tray.send(update_command(&tray.update)),
+            ),
             MenuItem::Separator,
             Self::action(labels.exit(), "application-exit", true, |tray| {
                 tray.send(WorkerCommand::Exit);
@@ -135,6 +143,7 @@ async fn run_async(
         language,
         link: String::new(),
         proxy_status: ProxyStatus::Starting,
+        update: UpdateState::Idle,
         icons: tray_icons(),
     };
     let tray_handle = tray
@@ -167,6 +176,12 @@ async fn run_async(
                             .await
                             .context("Linux tray service stopped while updating status")?;
                     }
+                    WorkerEvent::Update(update) => {
+                        tray_handle
+                            .update(move |tray| tray.update = update)
+                            .await
+                            .context("Linux tray service stopped while updating update state")?;
+                    }
                     WorkerEvent::Exited => break,
                 }
             }
@@ -186,6 +201,25 @@ async fn run_async(
 
     tray_handle.shutdown().await;
     Ok(())
+}
+
+fn update_is_actionable(state: &UpdateState) -> bool {
+    !matches!(
+        state,
+        UpdateState::Checking | UpdateState::Downloading { .. }
+    )
+}
+
+fn update_command(state: &UpdateState) -> WorkerCommand {
+    match state {
+        UpdateState::Available { .. } => WorkerCommand::DownloadUpdate,
+        UpdateState::Ready { .. } => WorkerCommand::InstallUpdate,
+        UpdateState::Idle
+        | UpdateState::Checking
+        | UpdateState::Current
+        | UpdateState::Downloading { .. }
+        | UpdateState::Failed => WorkerCommand::CheckUpdates,
+    }
 }
 
 fn link_is_actionable(status: &ProxyStatus, link: &str) -> bool {

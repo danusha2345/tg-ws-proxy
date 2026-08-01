@@ -10,6 +10,7 @@ use rustls::ClientConfig;
 use tokio::sync::{Mutex, Notify};
 use tokio::task::{JoinHandle, JoinSet};
 use tracing::{debug, info};
+use url::form_urlencoded;
 
 use crate::config::ProxyConfig;
 use crate::stats::Stats;
@@ -23,20 +24,56 @@ const IDLE_PROBE_TIMEOUT: Duration = Duration::from_millis(1);
 const IDLE_CLOSE_TIMEOUT: Duration = Duration::from_secs(2);
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+enum PoolRoute {
+    Direct { media: bool },
+    Worker,
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 struct PoolKey {
     dc: i16,
-    media: bool,
+    route: PoolRoute,
+}
+
+impl PoolKey {
+    const fn direct(dc: i16, media: bool) -> Self {
+        Self {
+            dc,
+            route: PoolRoute::Direct { media },
+        }
+    }
+
+    const fn worker(dc: i16) -> Self {
+        Self {
+            dc,
+            route: PoolRoute::Worker,
+        }
+    }
+
+    const fn media(self) -> Option<bool> {
+        match self.route {
+            PoolRoute::Direct { media } => Some(media),
+            PoolRoute::Worker => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
-struct ConnectSpec {
-    host: String,
-    domains: Vec<String>,
+enum ConnectSpec {
+    Direct {
+        host: String,
+        domains: Vec<String>,
+    },
+    Worker {
+        fallback_ip: IpAddr,
+        domains: Vec<String>,
+    },
 }
 
 struct PooledConnection {
     websocket: RawWebSocket,
     created: Instant,
+    domain: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -123,8 +160,19 @@ impl WsPool {
         for (&dc, target) in &self.inner.config.dc_redirects {
             for media in [false, true] {
                 let domains = websocket_domains(dc, media);
-                self.register(PoolKey { dc, media }, target, domains).await;
-                self.schedule_refill(PoolKey { dc, media }).await;
+                let key = PoolKey::direct(dc, media);
+                self.register_direct(key, target, domains).await;
+                self.schedule_refill(key).await;
+            }
+            if let Some(fallback_ip) = self.inner.config.fallback_ip(dc, false) {
+                let key = PoolKey::worker(dc);
+                self.register_worker(
+                    key,
+                    fallback_ip,
+                    self.inner.config.cfproxy_worker_domains.clone(),
+                )
+                .await;
+                self.schedule_refill(key).await;
             }
         }
         info!(
@@ -191,8 +239,8 @@ impl WsPool {
         if self.is_shutting_down() {
             return None;
         }
-        let key = PoolKey { dc, media };
-        self.register(key, &target, domains).await;
+        let key = PoolKey::direct(dc, media);
+        self.register_direct(key, &target, domains).await;
 
         let hit = loop {
             let candidate = {
@@ -228,13 +276,62 @@ impl WsPool {
     }
 
     pub async fn report_success(&self, dc: i16, media: bool) {
-        self.reset_backoff(PoolKey { dc, media }).await;
+        self.reset_backoff(PoolKey::direct(dc, media)).await;
     }
 
-    async fn register(&self, key: PoolKey, target: &IpAddr, domains: Vec<String>) {
+    pub async fn get_worker(
+        &self,
+        dc: i16,
+        fallback_ip: IpAddr,
+        domains: Vec<String>,
+    ) -> Option<(RawWebSocket, String)> {
+        if domains.is_empty() || self.is_shutting_down() {
+            return None;
+        }
+        let key = PoolKey::worker(dc);
+        self.register_worker(key, fallback_ip, domains).await;
+        let hit = loop {
+            let candidate = {
+                let mut idle = self.inner.idle.lock().await;
+                idle.entry(key).or_default().pop_front()
+            };
+            let Some(mut connection) = candidate else {
+                break None;
+            };
+            if connection_is_usable(&mut connection, Instant::now()).await {
+                let domain = connection
+                    .domain
+                    .take()
+                    .expect("worker pool entries retain their domain");
+                break Some((connection.websocket, domain));
+            }
+            connection.websocket.close().await;
+        };
+
+        if self.is_shutting_down() {
+            if let Some((websocket, _)) = hit {
+                websocket.close().await;
+            }
+            return None;
+        }
+        if hit.is_some() {
+            Stats::increment(&self.inner.stats.pool_hits);
+            self.reset_backoff(key).await;
+        } else {
+            Stats::increment(&self.inner.stats.pool_misses);
+        }
+        self.schedule_refill(key).await;
+        hit
+    }
+
+    pub async fn report_worker_success(&self, dc: i16) {
+        self.reset_backoff(PoolKey::worker(dc)).await;
+    }
+
+    async fn register_direct(&self, key: PoolKey, target: &IpAddr, domains: Vec<String>) {
         self.inner.specs.lock().await.insert(
             key,
-            ConnectSpec {
+            ConnectSpec::Direct {
                 host: target.to_string(),
                 domains,
             },
@@ -242,8 +339,19 @@ impl WsPool {
         self.inner.idle.lock().await.entry(key).or_default();
     }
 
+    async fn register_worker(&self, key: PoolKey, fallback_ip: IpAddr, domains: Vec<String>) {
+        self.inner.specs.lock().await.insert(
+            key,
+            ConnectSpec::Worker {
+                fallback_ip,
+                domains,
+            },
+        );
+        self.inner.idle.lock().await.entry(key).or_default();
+    }
+
     async fn schedule_refill(&self, key: PoolKey) {
-        if self.inner.config.pool_size == 0 || self.is_shutting_down() {
+        if self.capacity(key) == 0 || self.is_shutting_down() {
             return;
         }
         if let Some(backoff) = self.inner.backoff.lock().await.get(&key) {
@@ -283,9 +391,7 @@ impl WsPool {
         };
         let needed = {
             let idle = self.inner.idle.lock().await;
-            self.inner
-                .config
-                .pool_size
+            self.capacity(key)
                 .saturating_sub(idle.get(&key).map_or(0, VecDeque::len))
         };
         if needed == 0 {
@@ -299,10 +405,11 @@ impl WsPool {
 
         let mut connected = Vec::new();
         while let Some(result) = attempts.next().await {
-            if let Some(websocket) = result {
+            if let Some((websocket, domain)) = result {
                 connected.push(PooledConnection {
                     websocket,
                     created: Instant::now(),
+                    domain,
                 });
             }
         }
@@ -326,7 +433,7 @@ impl WsPool {
             );
             info!(
                 dc = key.dc,
-                media = key.media,
+                media = ?key.media(),
                 delay_seconds,
                 "WebSocket pool refill failed"
             );
@@ -337,7 +444,7 @@ impl WsPool {
         let count = connected.len();
         let mut idle = self.inner.idle.lock().await;
         let bucket = idle.entry(key).or_default();
-        let capacity = self.inner.config.pool_size.saturating_sub(bucket.len());
+        let capacity = self.capacity(key).saturating_sub(bucket.len());
         let mut overflow = connected.split_off(capacity.min(connected.len()));
         bucket.extend(connected);
         drop(idle);
@@ -346,30 +453,66 @@ impl WsPool {
         }
         debug!(
             dc = key.dc,
-            media = key.media,
+            media = ?key.media(),
             count,
             "WebSocket pool refilled"
         );
     }
 
-    async fn connect_one(&self, key: PoolKey, spec: &ConnectSpec) -> Option<RawWebSocket> {
+    async fn connect_one(
+        &self,
+        key: PoolKey,
+        spec: &ConnectSpec,
+    ) -> Option<(RawWebSocket, Option<String>)> {
+        match spec {
+            ConnectSpec::Direct { host, domains } => {
+                self.connect_one_direct(key, host, domains).await
+            }
+            ConnectSpec::Worker {
+                fallback_ip,
+                domains,
+            } => {
+                let mut domains = domains.clone();
+                shuffle(&mut domains);
+                let query = form_urlencoded::Serializer::new(String::new())
+                    .append_pair("dst", &fallback_ip.to_string())
+                    .append_pair("dc", &key.dc.to_string())
+                    .finish();
+                let path = format!("/apiws?{query}");
+                for domain in domains {
+                    if let Ok(websocket) = self.connect(&domain, &domain, None, &path, false).await
+                    {
+                        return Some((websocket, Some(domain)));
+                    }
+                }
+                None
+            }
+        }
+    }
+
+    async fn connect_one_direct(
+        &self,
+        key: PoolKey,
+        host: &str,
+        domains: &[String],
+    ) -> Option<(RawWebSocket, Option<String>)> {
         let prefer_fronting = self.prefers_fronting(key);
-        for domain in &spec.domains {
+        for domain in domains {
             if prefer_fronting {
-                if let Some(websocket) = self.connect_fronted(key, spec, domain).await {
-                    return Some(websocket);
+                if let Some(websocket) = self.connect_fronted(key, host, domain).await {
+                    return Some((websocket, None));
                 }
             }
 
-            match self.connect(&spec.host, domain, None, "/apiws").await {
+            match self.connect(host, domain, None, "/apiws", true).await {
                 Ok(websocket) => {
                     self.set_fronting_preference(key, false);
-                    return Some(websocket);
+                    return Some((websocket, None));
                 }
                 Err(error) if error.is_redirect() => {}
                 Err(WebSocketError::Timeout) if !prefer_fronting => {
-                    if let Some(websocket) = self.connect_fronted(key, spec, domain).await {
-                        return Some(websocket);
+                    if let Some(websocket) = self.connect_fronted(key, host, domain).await {
+                        return Some((websocket, None));
                     }
                 }
                 Err(_) => {}
@@ -381,11 +524,11 @@ impl WsPool {
     async fn connect_fronted(
         &self,
         key: PoolKey,
-        spec: &ConnectSpec,
+        host: &str,
         domain: &str,
     ) -> Option<RawWebSocket> {
         let websocket = self
-            .connect(&spec.host, domain, Some("sprinthost.ru"), "/apiws")
+            .connect(host, domain, Some("sprinthost.ru"), "/apiws", true)
             .await
             .ok()?;
         Stats::increment(&self.inner.stats.connections_fronting);
@@ -399,6 +542,7 @@ impl WsPool {
         domain: &str,
         sni: Option<&str>,
         path: &str,
+        request_binary_subprotocol: bool,
     ) -> Result<RawWebSocket, WebSocketError> {
         RawWebSocket::connect(
             host,
@@ -409,9 +553,16 @@ impl WsPool {
             Arc::clone(&self.inner.tls_config),
             self.inner.config.buffer_size,
             self.inner.config.max_ws_frame_size,
-            true,
+            request_binary_subprotocol,
         )
         .await
+    }
+
+    fn capacity(&self, key: PoolKey) -> usize {
+        match key.route {
+            PoolRoute::Direct { .. } => self.inner.config.pool_size,
+            PoolRoute::Worker => usize::from(!self.inner.config.cfproxy_worker_domains.is_empty()),
+        }
     }
 
     async fn maintain(&self) {
@@ -577,6 +728,19 @@ fn connection_state_is_stale(created: Instant, closed: bool, now: Instant) -> bo
     now.duration_since(created) >= MAX_AGE || closed
 }
 
+fn shuffle<T>(values: &mut [T]) {
+    for index in (1..values.len()).rev() {
+        let mut random = [0_u8; 4];
+        if getrandom::fill(&mut random).is_err() {
+            return;
+        }
+        let selected = usize::try_from(u32::from_le_bytes(random))
+            .expect("supported targets have at least 32-bit usize")
+            % (index + 1);
+        values.swap(index, selected);
+    }
+}
+
 async fn connection_is_usable(connection: &mut PooledConnection, now: Instant) -> bool {
     if connection_is_stale(connection, now) {
         return false;
@@ -632,15 +796,9 @@ mod tests {
     #[test]
     fn fronting_preference_is_scoped_to_pool_key() {
         let pool = test_pool(0);
-        let dc2_regular = PoolKey {
-            dc: 2,
-            media: false,
-        };
-        let dc2_media = PoolKey { dc: 2, media: true };
-        let dc4_regular = PoolKey {
-            dc: 4,
-            media: false,
-        };
+        let dc2_regular = PoolKey::direct(2, false);
+        let dc2_media = PoolKey::direct(2, true);
+        let dc4_regular = PoolKey::direct(4, false);
 
         pool.set_fronting_preference(dc2_regular, true);
 
@@ -660,6 +818,21 @@ mod tests {
         ));
         assert!(connection_state_is_stale(max_age_ago, false, now));
         assert!(connection_state_is_stale(now, true, now));
+    }
+
+    #[test]
+    fn worker_pool_is_one_connection_per_dc_and_independent_of_direct_size() {
+        let mut config = ProxyConfig {
+            pool_size: 8,
+            ..ProxyConfig::default()
+        };
+        config.cfproxy_worker_domains = vec!["one.workers.dev".to_owned()];
+        let pool = WsPool::new(Arc::new(config), tls_config(), Arc::new(Stats::default()));
+
+        assert_eq!(pool.capacity(PoolKey::direct(2, false)), 8);
+        assert_eq!(pool.capacity(PoolKey::worker(2)), 1);
+        assert_eq!(PoolKey::worker(2), PoolKey::worker(2));
+        assert_ne!(PoolKey::worker(2), PoolKey::worker(4));
     }
 
     #[tokio::test]
@@ -723,10 +896,7 @@ mod tests {
     #[tokio::test]
     async fn refill_is_not_started_after_shutdown() {
         let pool = test_pool(1);
-        let key = PoolKey {
-            dc: 2,
-            media: false,
-        };
+        let key = PoolKey::direct(2, false);
 
         pool.shutdown().await;
         pool.schedule_refill(key).await;

@@ -8,11 +8,10 @@ TLS WebSocket и автоматически использует доступн�
 
 > [!WARNING]
 >
-> Rust-ветка пока не проходила полноценное пользовательское тестирование на
-> реальных окружениях и не готова считаться стабильным релизом. Нужны тесты на
-> Windows, macOS и Linux, а также live-проверки direct WebSocket, Worker/CfProxy,
-> TCP fallback, Fake TLS и tray. Используйте её как тестовую сборку и
-> [сообщайте о найденных проблемах в Issues](https://github.com/danusha2345/tg-ws-proxy/issues).
+> Tray проверен на Windows 11. Сборки macOS, Linux и Windows ARM64 проходят CI,
+> но ещё нуждаются в расширенном пользовательском тестировании на реальном
+> железе, включая direct WebSocket, Worker/CfProxy, TCP fallback и Fake TLS.
+> [Сообщайте о найденных проблемах в Issues](https://github.com/danusha2345/tg-ws-proxy/issues).
 
 ## Что уже реализовано
 
@@ -20,14 +19,17 @@ TLS WebSocket и автоматически использует доступн�
 - direct TLS WebSocket, domain fronting, Cloudflare Worker/CfProxy и TCP
   fallback;
 - Fake TLS и HAProxy PROXY protocol v1;
-- пул соединений, лимиты клиентов и размера WebSocket-сообщений;
+- пулы direct и Cloudflare Worker соединений, лимиты клиентов и размера
+  WebSocket-сообщений;
 - постоянный secret, ротация логов и Docker-образ без root;
-- опциональный нативный tray для Windows 10+, актуальных macOS и Linux.
+- опциональный нативный tray для Windows 10+, актуальных macOS и Linux;
+- встроенная загрузка стабильных обновлений с GitHub Releases с проверкой
+  SHA-256.
 
 Подробный статус, исправленные ошибки и известные ограничения описаны в
 [документе о Rust-порте](./RUST_PORT.md).
 
-## Готовые тестовые сборки
+## Готовые стабильные сборки
 
 Собственные Rust-сборки публикуются на
 [странице Releases](https://github.com/danusha2345/tg-ws-proxy/releases).
@@ -74,9 +76,10 @@ cargo run --release --locked \
   --bin tg-ws-proxy-desktop
 ```
 
-Tray использует тот же Rust runtime. Полный GUI-редактор, auto-update,
-Windows autostart и portable mode пока остаются возможностями legacy
-Python-версии.
+Tray использует тот же Rust runtime. Пункт обновления проверяет стабильные
+`rust-v*` релизы, скачивает сборку для текущей ОС и сверяет её с
+`SHA256SUMS.txt`. Полный GUI-редактор, Windows autostart и portable mode пока
+остаются возможностями legacy Python-версии.
 
 ### Docker
 

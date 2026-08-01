@@ -1,6 +1,6 @@
 [package]
 name = "tg-ws-proxy"
-version = "1.9.0-alpha.2"
+version = "1.9.1"
 edition = "2024"
 rust-version = "1.85"
 description = "Telegram Desktop WebSocket bridge proxy"
@@ -10,6 +10,9 @@ default-run = "tg-ws-proxy"
 include = [
     "src/**",
     "tests/**",
+    "assets/**",
+    "build.rs",
+    "icon.ico",
     "Cargo.toml",
     "Cargo.lock",
     "rustfmt.toml",
@@ -39,6 +42,8 @@ desktop = [
     "dep:ksni",
     "dep:native-dialog",
     "dep:open",
+    "dep:reqwest",
+    "dep:semver",
     "dep:serde",
     "dep:serde_json",
     "dep:tray-icon",
@@ -59,9 +64,11 @@ getrandom = "0.4.3"
 hex = "0.4.3"
 hmac = "0.13.0"
 open = { version = "5.4.0", optional = true }
+reqwest = { version = "0.12.28", default-features = false, features = ["json", "rustls-tls", "stream"], optional = true }
 rustls = { version = "0.23.43", default-features = false, features = ["logging", "ring", "std", "tls12"] }
 serde = { version = "1.0.229", features = ["derive"], optional = true }
 serde_json = { version = "1.0.151", optional = true }
+semver = { version = "1.0.27", optional = true }
 sha2 = "0.11.0"
 socket2 = "0.6.5"
 subtle = "2.6.1"
@@ -84,6 +91,9 @@ winit = { version = "0.30.12", default-features = false, optional = true }
 
 [target.'cfg(windows)'.dependencies]
 native-dialog = { version = "0.9.7", features = ["windows_dpi_awareness", "windows_visual_styles"], optional = true }
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1.23"
 
 [dev-dependencies]
 proptest = "1.10.0"

@@ -1,4 +1,4 @@
-name: Rust Prerelease
+name: Rust Release
 
 on:
   push:
@@ -37,8 +37,8 @@ jobs:
             echo "Tag version $tag_version does not match Cargo version $cargo_version" >&2
             exit 1
           fi
-          if [[ ! "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$ ]]; then
-            echo "Rust release tag must describe a prerelease" >&2
+          if [[ ! "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Rust release tag must describe a stable version" >&2
             exit 1
           fi
 
@@ -309,7 +309,7 @@ jobs:
           retention-days: 30
 
   release:
-    name: Publish GitHub prerelease
+    name: Publish GitHub release
     needs:
       - build-windows
       - build-linux
@@ -375,12 +375,18 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#rust-v}"
           cat >release-notes.md <<EOF
-          > [!WARNING]
-          > Rust-версия **$version** является тестовой и ещё не проходила
-          > полноценное пользовательское тестирование. Нужны проверки CLI и
-          > tray на Windows, macOS и Linux, включая direct WebSocket,
-          > Worker/CfProxy, TCP fallback, Fake TLS, sleep/resume и длительную
-          > работу.
+          Rust-версия **$version** опубликована в стабильном канале. Работа tray
+          подтверждена на Windows 11; сборки остальных платформ проходят CI,
+          но им всё ещё полезны live-проверки на реальном железе.
+
+          ## Что нового
+
+          - один заранее прогретый Cloudflare Worker socket на DC, общий для
+            всех настроенных Worker-доменов;
+          - исправленный upload path без ограничения одним WebSocket message;
+          - встроенная проверка, скачивание и SHA-256-проверка обновлений с
+            GitHub Releases;
+          - новая единая иконка приложения и исправленные platform packages.
 
           ## Сборки
 
@@ -409,7 +415,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="$GITHUB_REF_NAME"
-          title="TG WS Proxy Rust ${tag#rust-v} — тестовая сборка"
+          title="TG WS Proxy Rust ${tag#rust-v}"
 
           if gh release view "$tag" >/dev/null 2>&1; then
             is_draft="$(
@@ -427,21 +433,20 @@ jobs:
             gh release create "$tag" \
               --verify-tag \
               --draft \
-              --prerelease \
               --title "$title" \
               --notes-file release-notes.md
           fi
 
           gh release upload "$tag" dist/* --clobber
 
-      - name: Publish prerelease
+      - name: Publish release
         shell: bash
         env:
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease
+          gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false
           gh release view "$GITHUB_REF_NAME" \
             --json isDraft,isPrerelease,url,assets \
             --jq '{
@@ -450,3 +455,5 @@ jobs:
               prerelease: .isPrerelease,
               assets: [.assets[].name]
             }'
+          test "$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft)" = false
+          test "$(gh release view "$GITHUB_REF_NAME" --json isPrerelease --jq .isPrerelease)" = false

@@ -23,7 +23,8 @@ cargo build --release --locked \
 
 Он запускает тот же Rust runtime, показывает реальный статус listener, умеет
 открыть/скопировать ссылку, перезапустить proxy, открыть JSON config и логи.
-Полный GUI-редактор, auto-update и autostart пока остаются в legacy frontend.
+Полный GUI-редактор и autostart пока остаются в legacy frontend. Rust tray
+умеет загружать стабильные обновления из GitHub Releases.
 
 Подробности и статус совместимости: [Rust-порт](./RUST_PORT.md).
 

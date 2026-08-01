@@ -23,7 +23,7 @@ jobs:
               [Rust-сборке](https://github.com/danusha2345/tg-ws-proxy/releases);
             - сверьтесь с
               [README и инструкцией для своей ОС](https://github.com/danusha2345/tg-ws-proxy/blob/rust-port/docs/README.md);
-            - учитывайте, что Rust-версия пока тестовая и нуждается в проверке
+            - для macOS, Linux и Windows ARM64 укажите результаты live-проверки
               на реальных окружениях.
 
             Пожалуйста, укажите:
