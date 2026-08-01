@@ -22,7 +22,8 @@
 - ограничение размера WebSocket-сообщения и числа одновременных клиентов;
 - ротация логов и совместимые основные параметры CLI;
 - feature-gated нативный tray для Linux, Windows и macOS с единым Rust runtime;
-- Android JNI frontend с foreground service, настройками и логами;
+- Android JNI frontend с foreground service, настройками, логами и проверяемым
+  обновлением из стабильных `android-v*` GitHub Releases;
 - Docker-образ с запуском от непривилегированного пользователя;
 - обновление desktop-приложения из стабильных GitHub Releases с проверкой
   опубликованной SHA-256 суммы.

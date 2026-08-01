@@ -1,4 +1,4 @@
-name: Android Prerelease
+name: Android Release
 
 on:
   push:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   release:
-    name: Build and publish Android prerelease
+    name: Build and publish Android release
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -41,7 +41,7 @@ jobs:
 
           test "$tag_version" = "$app_version"
           test "$tag_version" = "$bridge_version"
-          [[ "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$ ]]
+          [[ "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
 
           git fetch --no-tags origin \
             "+refs/heads/android-port:refs/remotes/origin/android-port"
@@ -80,6 +80,29 @@ jobs:
       - name: Install cargo-ndk
         run: cargo install cargo-ndk --version 4.1.2 --locked
 
+      - name: Prepare persistent Android signing key
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.TG_WS_PROXY_ANDROID_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.TG_WS_PROXY_ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.TG_WS_PROXY_ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.TG_WS_PROXY_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_B64"
+          test -n "$STORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
+          keystore="$RUNNER_TEMP/tg-ws-proxy-release.p12"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode >"$keystore"
+          test -s "$keystore"
+          {
+            echo "TG_WS_PROXY_ANDROID_KEYSTORE=$keystore"
+            echo "TG_WS_PROXY_ANDROID_STORE_PASSWORD=$STORE_PASSWORD"
+            echo "TG_WS_PROXY_ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "TG_WS_PROXY_ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+          } >>"$GITHUB_ENV"
+
       - name: Verify Rust bridge
         run: |
           cargo fmt --all -- --check
@@ -92,6 +115,8 @@ jobs:
 
       - name: Prepare release assets
         shell: bash
+        env:
+          EXPECTED_CERT_SHA256: ${{ secrets.TG_WS_PROXY_ANDROID_CERT_SHA256 }}
         run: |
           set -euo pipefail
           mkdir -p dist
@@ -104,8 +129,18 @@ jobs:
           cp "$universal" dist/TgWsProxy_android_universal.apk
           cp "$arm64" dist/TgWsProxy_android_arm64-v8a.apk
 
+          cert_output="$RUNNER_TEMP/android-cert.txt"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" \
-            verify --verbose --print-certs dist/TgWsProxy_android_universal.apk
+            verify --verbose --print-certs dist/TgWsProxy_android_universal.apk \
+            | tee "$cert_output"
+          actual_cert="$(
+            sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$cert_output" \
+              | tr '[:upper:]' '[:lower:]' \
+              | head -n 1
+          )"
+          expected_cert="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr '[:upper:]' '[:lower:]')"
+          test -n "$expected_cert"
+          test "$actual_cert" = "$expected_cert"
           unzip -l dist/TgWsProxy_android_universal.apk \
             | grep -q 'lib/arm64-v8a/libtg_ws_proxy_android.so'
           unzip -l dist/TgWsProxy_android_universal.apk \
@@ -125,12 +160,12 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#android-v}"
           cat >release-notes.md <<EOF
-          > [!WARNING]
-          > Android-версия **$version** экспериментальная и ещё не проверена
-          > с Telegram на реальном телефоне. Нужны тесты Wi-Fi/мобильной сети,
-          > выключенного экрана, энергосбережения и длительной работы.
+          Android-версия **$version** опубликована в стабильном канале. Сборка
+          проходит CI; для 0.1.0 выполнен emulator smoke-тест. Результаты
+          live-проверок на разных телефонах, сетях и режимах энергосбережения
+          всё ещё приветствуются.
 
-          ## Android alpha.2
+          ## Android $version
 
           - локальное Rust-ядро на \`127.0.0.1\`;
           - Android Foreground Service с постоянным уведомлением;
@@ -142,6 +177,11 @@ jobs:
           - запуск и остановка, статус, счётчики соединений и трафика;
           - открытие Telegram и копирование \`tg://proxy\`;
           - Worker/CfProxy, TCP fallback, Fake TLS и masking upstream;
+          - один предварительно подключённый Worker socket на DC и поле для
+            нескольких Worker-доменов;
+          - встроенная загрузка стабильных Android-релизов с GitHub и проверка
+            APK по опубликованной SHA-256 сумме;
+          - новая единая иконка приложения;
           - secret хранится с защитой Android Keystore;
           - просмотр, очистка и отправка логов;
           - русский и английский интерфейс.
@@ -150,22 +190,22 @@ jobs:
           \`TgWsProxy_android_arm64-v8a.apk\`. Универсальный APK также содержит
           \`armeabi-v7a\` и \`x86_64\`.
 
-          Тестовые CI-релизы пока подписываются временным ключом GitHub Actions.
-          Если установлена предыдущая alpha, перед обновлением может
-          потребоваться удалить её с потерей настроек приложения. Постоянный
-          release key будет добавлен отдельно.
+          Релиз подписан постоянным ключом проекта. Предыдущие alpha были
+          подписаны временными CI-ключами, поэтому перед первым переходом на
+          стабильную 0.1.0 их потребуется удалить с потерей настроек. Начиная с
+          этой версии встроенные обновления устанавливаются поверх приложения.
 
           Контрольные суммы: \`SHA256SUMS-android.txt\`.
 
           ### [❤️ Поддержать](https://boosty.to/danusha/donate)
           EOF
 
-      - name: Publish GitHub prerelease
+      - name: Publish GitHub release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          name: TG WS Proxy Android ${{ github.ref_name }} — тестовая сборка
+          name: TG WS Proxy Android ${{ github.ref_name }}
           body_path: release-notes.md
-          prerelease: true
+          prerelease: false
           draft: false
           target_commitish: ${{ github.sha }}
           files: dist/*

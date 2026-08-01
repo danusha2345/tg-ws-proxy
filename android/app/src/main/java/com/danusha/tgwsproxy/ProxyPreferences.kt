@@ -6,6 +6,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import androidx.core.content.edit
 import org.json.JSONObject
+import org.json.JSONArray
 import java.security.KeyStore
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -18,6 +19,7 @@ data class ProxySettings(
     val secret: String,
     val poolSize: Int,
     val fallbackCfproxy: Boolean,
+    val workerDomains: String,
     val fakeTlsDomain: String,
     val maskingUpstream: String,
 )
@@ -45,6 +47,7 @@ class ProxyPreferences(context: Context) {
             secret = readSecret(),
             poolSize = preferences.getInt(KEY_POOL_SIZE, DEFAULT_POOL_SIZE),
             fallbackCfproxy = preferences.getBoolean(KEY_CFPROXY, true),
+            workerDomains = preferences.getString(KEY_WORKER_DOMAINS, "").orEmpty(),
             fakeTlsDomain = preferences.getString(KEY_FAKE_TLS, "").orEmpty(),
             maskingUpstream = preferences.getString(KEY_MASKING, "").orEmpty(),
         )
@@ -56,6 +59,7 @@ class ProxyPreferences(context: Context) {
             putInt(KEY_PORT, settings.port)
             putInt(KEY_POOL_SIZE, settings.poolSize)
             putBoolean(KEY_CFPROXY, settings.fallbackCfproxy)
+            putString(KEY_WORKER_DOMAINS, settings.workerDomains.trim())
             putString(KEY_FAKE_TLS, settings.fakeTlsDomain.trim())
             putString(KEY_MASKING, settings.maskingUpstream.trim())
         }
@@ -68,6 +72,10 @@ class ProxyPreferences(context: Context) {
             .put("secret", settings.secret)
             .put("poolSize", settings.poolSize)
             .put("fallbackCfproxy", settings.fallbackCfproxy)
+            .put(
+                "workerDomains",
+                JSONArray(ProxyInputValidator.parseDomains(settings.workerDomains)),
+            )
             .put("fakeTlsDomain", settings.fakeTlsDomain)
             .put("maskingUpstream", settings.maskingUpstream)
             .put("logPath", logFile().absolutePath)
@@ -136,6 +144,7 @@ class ProxyPreferences(context: Context) {
         private const val KEY_PORT = "port"
         private const val KEY_POOL_SIZE = "pool-size"
         private const val KEY_CFPROXY = "cfproxy"
+        private const val KEY_WORKER_DOMAINS = "worker-domains"
         private const val KEY_FAKE_TLS = "fake-tls"
         private const val KEY_MASKING = "masking"
         private const val KEY_SECRET = "secret-encrypted"

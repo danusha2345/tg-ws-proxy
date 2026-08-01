@@ -307,6 +307,20 @@
             android:textColor="@color/paper"
             android:textSize="14sp" />
 
+        <Button
+            android:id="@+id/updateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_secondary"
+            android:minHeight="52dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:text="@string/update_check"
+            android:textAllCaps="false"
+            android:textColor="@color/paper"
+            android:textSize="14sp" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -383,6 +397,23 @@
             android:paddingBottom="8dp"
             android:text="@string/cfproxy_label"
             android:textColor="@color/paper" />
+
+        <EditText
+            android:id="@+id/workerDomainsInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_input"
+            android:gravity="top|start"
+            android:hint="@string/worker_domains_hint"
+            android:importantForAutofill="no"
+            android:inputType="textUri|textMultiLine"
+            android:maxLines="3"
+            android:minHeight="72dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="14dp"
+            android:textColor="@color/paper"
+            android:textColorHint="@color/muted" />
 
         <EditText
             android:id="@+id/fakeTlsInput"

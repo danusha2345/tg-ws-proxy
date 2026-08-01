@@ -22,6 +22,14 @@
     <string name="open_telegram">Подключить Telegram</string>
     <string name="copy_link">Копировать ссылку</string>
     <string name="open_logs">Открыть логи</string>
+    <string name="update_check">Проверить обновления</string>
+    <string name="update_checking">Проверка обновлений…</string>
+    <string name="update_current">Установлена актуальная версия</string>
+    <string name="update_download">Скачать обновление %1$s</string>
+    <string name="update_downloading">Скачивается %1$s…</string>
+    <string name="update_install">Установить обновление %1$s</string>
+    <string name="update_retry">Повторить проверку обновлений</string>
+    <string name="update_failed">Не удалось скачать и проверить обновление</string>
     <string name="battery_warning_title">Фоновая работа ограничена</string>
     <string name="battery_warning_message">Android может остановить прокси и убрать его уведомление при выключенном экране.</string>
     <string name="battery_disable_action">Отключить ограничения</string>
@@ -36,6 +44,7 @@
     <string name="generate_secret">Новый secret</string>
     <string name="pool_hint">Размер пула WebSocket</string>
     <string name="cfproxy_label">Разрешить Worker/CfProxy fallback</string>
+    <string name="worker_domains_hint">Домены Cloudflare Worker (через запятую или пробел)</string>
     <string name="fake_tls_hint">Fake TLS domain (необязательно)</string>
     <string name="masking_hint">Masking upstream (необязательно)</string>
     <string name="save_settings">Сохранить параметры</string>
@@ -51,6 +60,7 @@
     <string name="invalid_port">Порт должен быть от 1 до 65535</string>
     <string name="invalid_secret">Secret должен содержать ровно 32 hex-символа</string>
     <string name="invalid_pool">Размер пула должен быть от 0 до 128</string>
+    <string name="invalid_worker_domains">Укажите полные домены, например proxy.example.workers.dev</string>
     <string name="logs_title">Логи прокси</string>
     <string name="refresh">Обновить</string>
     <string name="share">Отправить</string>
@@ -58,5 +68,5 @@
     <string name="logs_empty">Лог пока пуст. Запустите прокси и обновите экран.</string>
     <string name="logs_share_title">Отправить лог TG WS Proxy</string>
     <string name="logs_tail">… показан конец журнала …\n%1$s</string>
-    <string name="test_warning">Тестовая Android-версия. Проверьте работу на своём телефоне.</string>
+    <string name="test_warning">Стабильный канал · результаты тестов на телефонах приветствуются</string>
 </resources>

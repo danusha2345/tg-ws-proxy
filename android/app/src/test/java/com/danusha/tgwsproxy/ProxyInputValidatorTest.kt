@@ -29,4 +29,16 @@ class ProxyInputValidatorTest {
         assertFalse(ProxyInputValidator.validPoolSize("-1"))
         assertFalse(ProxyInputValidator.validPoolSize("129"))
     }
+
+    @Test
+    fun normalizes_and_validates_worker_domains() {
+        assertTrue(ProxyInputValidator.validDomains("One.Workers.dev, two.example"))
+        assertTrue(ProxyInputValidator.validDomains(""))
+        assertFalse(ProxyInputValidator.validDomains("workers-dev"))
+        assertFalse(ProxyInputValidator.validDomains("-bad.example"))
+        assertTrue(
+            ProxyInputValidator.parseDomains("One.Workers.dev; one.workers.dev two.example") ==
+                listOf("one.workers.dev", "two.example"),
+        )
+    }
 }

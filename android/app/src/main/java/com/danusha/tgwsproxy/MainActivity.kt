@@ -22,6 +22,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.core.content.FileProvider
+import java.io.File
+import java.util.concurrent.Executors
 import kotlin.math.ln
 import kotlin.math.pow
 
@@ -41,12 +44,18 @@ class MainActivity : Activity() {
     private lateinit var secretInput: EditText
     private lateinit var poolInput: EditText
     private lateinit var cfproxySwitch: Switch
+    private lateinit var workerDomainsInput: EditText
     private lateinit var fakeTlsInput: EditText
     private lateinit var maskingInput: EditText
+    private lateinit var updateButton: Button
     private var currentStatus = ProxyStatus("stopped", null, null, 0, 0, 0, 0)
     private var pendingProxyStart = false
     private var notificationPermissionRequestInProgress = false
     private var batteryDialog: AlertDialog? = null
+    private val updateExecutor = Executors.newSingleThreadExecutor()
+    private var availableUpdate: AndroidRelease? = null
+    private var downloadedUpdate: File? = null
+    private var pendingInstall: File? = null
 
     private val refreshStatus = object : Runnable {
         override fun run() {
@@ -67,6 +76,7 @@ class MainActivity : Activity() {
         bindActions()
         requestNotificationPermission()
         handler.postDelayed(::maybeExplainBatteryOptimization, BATTERY_PROMPT_DELAY_MS)
+        checkForUpdates(showCurrent = false)
     }
 
     override fun onResume() {
@@ -75,6 +85,10 @@ class MainActivity : Activity() {
         if (pendingProxyStart && isBatteryOptimizationDisabled()) {
             pendingProxyStart = false
             ProxyService.start(this)
+        }
+        pendingInstall?.takeIf { packageManager.canRequestPackageInstalls() }?.let { apk ->
+            pendingInstall = null
+            launchApkInstaller(apk)
         }
         handler.removeCallbacks(refreshStatus)
         handler.post(refreshStatus)
@@ -88,6 +102,7 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         batteryDialog?.dismiss()
         batteryDialog = null
+        updateExecutor.shutdownNow()
         super.onDestroy()
     }
 
@@ -117,8 +132,10 @@ class MainActivity : Activity() {
         secretInput = findViewById(R.id.secretInput)
         poolInput = findViewById(R.id.poolInput)
         cfproxySwitch = findViewById(R.id.cfproxySwitch)
+        workerDomainsInput = findViewById(R.id.workerDomainsInput)
         fakeTlsInput = findViewById(R.id.fakeTlsInput)
         maskingInput = findViewById(R.id.maskingInput)
+        updateButton = findViewById(R.id.updateButton)
     }
 
     private fun bindActions() {
@@ -146,6 +163,13 @@ class MainActivity : Activity() {
             secretInput.setText(preferences.generateSecret())
         }
         findViewById<Button>(R.id.saveButton).setOnClickListener { saveSettings(true) }
+        updateButton.setOnClickListener {
+            when {
+                downloadedUpdate != null -> installUpdate(downloadedUpdate!!)
+                availableUpdate != null -> downloadUpdate(availableUpdate!!)
+                else -> checkForUpdates(showCurrent = true)
+            }
+        }
     }
 
     private fun loadSettings() {
@@ -154,6 +178,7 @@ class MainActivity : Activity() {
         secretInput.setText(settings.secret)
         poolInput.setText(getString(R.string.integer_value, settings.poolSize))
         cfproxySwitch.isChecked = settings.fallbackCfproxy
+        workerDomainsInput.setText(settings.workerDomains)
         fakeTlsInput.setText(settings.fakeTlsDomain)
         maskingInput.setText(settings.maskingUpstream)
         endpointText.text = getString(R.string.endpoint_format, settings.port)
@@ -175,12 +200,18 @@ class MainActivity : Activity() {
             poolInput.error = getString(R.string.invalid_pool)
             return false
         }
+        val workerDomains = workerDomainsInput.text.toString()
+        if (!ProxyInputValidator.validDomains(workerDomains)) {
+            workerDomainsInput.error = getString(R.string.invalid_worker_domains)
+            return false
+        }
         preferences.save(
             ProxySettings(
                 port = port.toInt(),
                 secret = secret,
                 poolSize = pool.toInt(),
                 fallbackCfproxy = cfproxySwitch.isChecked,
+                workerDomains = workerDomains,
                 fakeTlsDomain = fakeTlsInput.text.toString(),
                 maskingUpstream = maskingInput.text.toString(),
             ),
@@ -328,6 +359,82 @@ class MainActivity : Activity() {
             .isIgnoringBatteryOptimizations(packageName)
     }
 
+    private fun checkForUpdates(showCurrent: Boolean) {
+        setUpdateBusy(R.string.update_checking)
+        updateExecutor.execute {
+            val result = runCatching {
+                GithubUpdater.findUpdate(BuildConfig.VERSION_NAME)
+            }
+            runOnUiThread {
+                result.onSuccess { release ->
+                    availableUpdate = release
+                    downloadedUpdate = null
+                    updateButton.isEnabled = true
+                    updateButton.text = if (release == null) {
+                        getString(R.string.update_current)
+                    } else {
+                        getString(R.string.update_download, release.version)
+                    }
+                    if (release == null && showCurrent) {
+                        Toast.makeText(this, R.string.update_current, Toast.LENGTH_SHORT).show()
+                    }
+                }.onFailure {
+                    updateButton.isEnabled = true
+                    updateButton.setText(R.string.update_retry)
+                    if (showCurrent) {
+                        Toast.makeText(this, R.string.update_failed, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun downloadUpdate(release: AndroidRelease) {
+        setUpdateBusy(R.string.update_downloading, release.version)
+        updateExecutor.execute {
+            val result = runCatching { GithubUpdater.download(this, release) }
+            runOnUiThread {
+                result.onSuccess { apk ->
+                    downloadedUpdate = apk
+                    updateButton.isEnabled = true
+                    updateButton.text = getString(R.string.update_install, release.version)
+                }.onFailure {
+                    updateButton.isEnabled = true
+                    updateButton.setText(R.string.update_retry)
+                    availableUpdate = null
+                    Toast.makeText(this, R.string.update_failed, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun installUpdate(apk: File) {
+        if (!packageManager.canRequestPackageInstalls()) {
+            pendingInstall = apk
+            val intent = Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                "package:$packageName".toUri(),
+            )
+            startActivity(intent)
+            return
+        }
+        launchApkInstaller(apk)
+    }
+
+    private fun launchApkInstaller(apk: File) {
+        val uri = FileProvider.getUriForFile(this, "$packageName.files", apk)
+        startActivity(
+            Intent(Intent.ACTION_VIEW)
+                .setDataAndType(uri, APK_MIME_TYPE)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+        )
+    }
+
+    private fun setUpdateBusy(label: Int, version: String? = null) {
+        updateButton.isEnabled = false
+        updateButton.text = if (version == null) getString(label) else getString(label, version)
+    }
+
     private fun formatBytes(bytes: Long): String {
         if (bytes <= 0) return "0 B"
         val units = arrayOf("B", "KiB", "MiB", "GiB")
@@ -339,5 +446,6 @@ class MainActivity : Activity() {
         private const val STATUS_POLL_MS = 1_000L
         private const val BATTERY_PROMPT_DELAY_MS = 700L
         private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1
+        private const val APK_MIME_TYPE = "application/vnd.android.package-archive"
     }
 }

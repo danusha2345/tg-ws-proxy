@@ -8,7 +8,7 @@ use jni::JNIEnv;
 use jni::objects::{JClass, JString};
 use jni::sys::jstring;
 use serde::{Deserialize, Serialize};
-use tg_ws_proxy::config::{ProxyConfig, parse_secret};
+use tg_ws_proxy::config::{ProxyConfig, normalize_domains, parse_secret};
 use tg_ws_proxy::logging::RotatingMakeWriter;
 use tg_ws_proxy::{Proxy, stats::StatsSnapshot};
 use tokio::sync::oneshot;
@@ -27,6 +27,8 @@ struct MobileConfig {
     pool_size: usize,
     #[serde(default = "default_true")]
     fallback_cfproxy: bool,
+    #[serde(default)]
+    worker_domains: Vec<String>,
     #[serde(default)]
     fake_tls_domain: Option<String>,
     #[serde(default)]
@@ -115,6 +117,9 @@ fn build_proxy_config(config: &MobileConfig) -> Result<ProxyConfig> {
         port: config.port,
         pool_size: config.pool_size,
         fallback_cfproxy: config.fallback_cfproxy,
+        cfproxy_worker_domains: normalize_domains(
+            config.worker_domains.iter().map(String::as_str),
+        )?,
         fake_tls_domain: normalize_optional_domain(config.fake_tls_domain.clone()),
         masking_upstream: normalize_optional_domain(config.masking_upstream.clone()),
         ..ProxyConfig::default()
@@ -337,6 +342,7 @@ mod tests {
             secret: "00112233445566778899aabbccddeeff".to_owned(),
             pool_size: 2,
             fallback_cfproxy: true,
+            worker_domains: vec!["One.Workers.dev".to_owned(), "two.workers.dev".to_owned()],
             fake_tls_domain: None,
             masking_upstream: None,
             log_path: PathBuf::from("proxy.log"),
@@ -344,6 +350,10 @@ mod tests {
         let proxy_config = build_proxy_config(&config).unwrap();
         assert_eq!(proxy_config.host, "127.0.0.1");
         assert_eq!(proxy_config.port, 1443);
+        assert_eq!(
+            proxy_config.cfproxy_worker_domains,
+            ["one.workers.dev", "two.workers.dev"]
+        );
         assert_eq!(
             proxy_config.telegram_url("127.0.0.1"),
             "tg://proxy?server=127.0.0.1&port=1443&secret=dd00112233445566778899aabbccddeeff"
@@ -357,6 +367,7 @@ mod tests {
             secret: "short".to_owned(),
             pool_size: 4,
             fallback_cfproxy: true,
+            worker_domains: Vec::new(),
             fake_tls_domain: None,
             masking_upstream: None,
             log_path: PathBuf::from("proxy.log"),

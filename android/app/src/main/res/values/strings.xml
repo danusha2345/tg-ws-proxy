@@ -22,6 +22,14 @@
     <string name="open_telegram">Connect Telegram</string>
     <string name="copy_link">Copy link</string>
     <string name="open_logs">Open logs</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_current">The latest version is installed</string>
+    <string name="update_download">Download update %1$s</string>
+    <string name="update_downloading">Downloading %1$s…</string>
+    <string name="update_install">Install update %1$s</string>
+    <string name="update_retry">Retry update check</string>
+    <string name="update_failed">Could not download and verify the update</string>
     <string name="battery_warning_title">Background work is restricted</string>
     <string name="battery_warning_message">Android may stop the proxy and remove its notification while the screen is off.</string>
     <string name="battery_disable_action">Remove restrictions</string>
@@ -36,6 +44,7 @@
     <string name="generate_secret">New secret</string>
     <string name="pool_hint">WebSocket pool size</string>
     <string name="cfproxy_label">Allow Worker/CfProxy fallback</string>
+    <string name="worker_domains_hint">Cloudflare Worker domains (comma or space separated)</string>
     <string name="fake_tls_hint">Fake TLS domain (optional)</string>
     <string name="masking_hint">Masking upstream (optional)</string>
     <string name="save_settings">Save settings</string>
@@ -51,6 +60,7 @@
     <string name="invalid_port">Port must be between 1 and 65535</string>
     <string name="invalid_secret">Secret must contain exactly 32 hex characters</string>
     <string name="invalid_pool">Pool size must be between 0 and 128</string>
+    <string name="invalid_worker_domains">Enter complete domains, for example proxy.example.workers.dev</string>
     <string name="logs_title">Proxy logs</string>
     <string name="refresh">Refresh</string>
     <string name="share">Share</string>
@@ -58,6 +68,6 @@
     <string name="logs_empty">The log is empty. Start the proxy and refresh this screen.</string>
     <string name="logs_share_title">Share TG WS Proxy log</string>
     <string name="logs_tail">… showing the end of the log …\n%1$s</string>
-    <string name="test_warning">Experimental Android build. Test it on your device.</string>
+    <string name="test_warning">Stable release channel · real-device test reports are welcome</string>
     <string name="status_dot" translatable="false">●</string>
 </resources>
