@@ -1,0 +1,342 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A20000000000000000000001 /* TgWsProxyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* TgWsProxyApp.swift */; };
+		A20000000000000000000003 /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* LogStore.swift */; };
+		A20000000000000000000005 /* KeepAlive.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* KeepAlive.swift */; };
+		A20000000000000000000007 /* NativeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* NativeBridge.swift */; };
+		A20000000000000000000009 /* ProxyAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* ProxyAppIntents.swift */; };
+		A2000000000000000000000B /* ProxyController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000C /* ProxyController.swift */; };
+		A2000000000000000000000D /* ProxySettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000E /* ProxySettings.swift */; };
+		A2000000000000000000000F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000010 /* ContentView.swift */; };
+		A20000000000000000000011 /* InfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* InfoView.swift */; };
+		A20000000000000000000013 /* LogsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* LogsView.swift */; };
+		A20000000000000000000015 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* SettingsView.swift */; };
+		A20000000000000000000017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000018 /* Assets.xcassets */; };
+		A20000000000000000000019 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000001A /* Localizable.xcstrings */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A1000000000000000000001B /* TG WS Proxy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "TG WS Proxy.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000002 /* TgWsProxyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TgWsProxyApp.swift; sourceTree = "<group>"; };
+		A10000000000000000000004 /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
+		A10000000000000000000006 /* KeepAlive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepAlive.swift; sourceTree = "<group>"; };
+		A10000000000000000000008 /* NativeBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeBridge.swift; sourceTree = "<group>"; };
+		A1000000000000000000000A /* ProxyAppIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyAppIntents.swift; sourceTree = "<group>"; };
+		A1000000000000000000000C /* ProxyController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyController.swift; sourceTree = "<group>"; };
+		A1000000000000000000000E /* ProxySettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxySettings.swift; sourceTree = "<group>"; };
+		A10000000000000000000010 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A10000000000000000000012 /* InfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoView.swift; sourceTree = "<group>"; };
+		A10000000000000000000014 /* LogsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogsView.swift; sourceTree = "<group>"; };
+		A10000000000000000000016 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A10000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1000000000000000000001A /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		A1000000000000000000001C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1000000000000000000001D /* TgWsProxy-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TgWsProxy-Bridging-Header.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A6000000000000000000001E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A3000000000000000000001F = {
+			isa = PBXGroup;
+			children = (
+				A30000000000000000000020 /* TgWsProxy */,
+				A30000000000000000000021 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A30000000000000000000021 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1000000000000000000001B /* TG WS Proxy.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A30000000000000000000020 /* TgWsProxy */ = {
+			isa = PBXGroup;
+			children = (
+				A30000000000000000000022 /* App */,
+				A30000000000000000000023 /* Logs */,
+				A30000000000000000000024 /* Proxy */,
+				A30000000000000000000025 /* UI */,
+				A10000000000000000000018 /* Assets.xcassets */,
+				A1000000000000000000001A /* Localizable.xcstrings */,
+				A1000000000000000000001C /* Info.plist */,
+				A1000000000000000000001D /* TgWsProxy-Bridging-Header.h */,
+			);
+			path = TgWsProxy;
+			sourceTree = "<group>";
+		};
+		A30000000000000000000022 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000002 /* TgWsProxyApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A30000000000000000000023 /* Logs */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000004 /* LogStore.swift */,
+			);
+			path = Logs;
+			sourceTree = "<group>";
+		};
+		A30000000000000000000024 /* Proxy */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000006 /* KeepAlive.swift */,
+				A10000000000000000000008 /* NativeBridge.swift */,
+				A1000000000000000000000A /* ProxyAppIntents.swift */,
+				A1000000000000000000000C /* ProxyController.swift */,
+				A1000000000000000000000E /* ProxySettings.swift */,
+			);
+			path = Proxy;
+			sourceTree = "<group>";
+		};
+		A30000000000000000000025 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000010 /* ContentView.swift */,
+				A10000000000000000000012 /* InfoView.swift */,
+				A10000000000000000000014 /* LogsView.swift */,
+				A10000000000000000000016 /* SettingsView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A40000000000000000000026 /* TgWsProxy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A70000000000000000000027 /* Build configuration list for PBXNativeTarget "TgWsProxy" */;
+			buildPhases = (
+				A60000000000000000000028 /* Build Rust core */,
+				A60000000000000000000029 /* Sources */,
+				A6000000000000000000001E /* Frameworks */,
+				A6000000000000000000002A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TgWsProxy;
+			productName = TgWsProxy;
+			productReference = A1000000000000000000001B /* TG WS Proxy.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A5000000000000000000002B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					A40000000000000000000026 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = A7000000000000000000002C /* Build configuration list for PBXProject "TgWsProxy" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				ru,
+				Base,
+			);
+			mainGroup = A3000000000000000000001F;
+			productRefGroup = A30000000000000000000021 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A40000000000000000000026 /* TgWsProxy */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A6000000000000000000002A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A20000000000000000000017 /* Assets.xcassets in Resources */,
+				A20000000000000000000019 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A60000000000000000000028 /* Build Rust core */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Build Rust core";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"$SRCROOT/scripts/build-rust-ios.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A60000000000000000000029 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A20000000000000000000001 /* TgWsProxyApp.swift in Sources */,
+				A20000000000000000000003 /* LogStore.swift in Sources */,
+				A20000000000000000000005 /* KeepAlive.swift in Sources */,
+				A20000000000000000000007 /* NativeBridge.swift in Sources */,
+				A20000000000000000000009 /* ProxyAppIntents.swift in Sources */,
+				A2000000000000000000000B /* ProxyController.swift in Sources */,
+				A2000000000000000000000D /* ProxySettings.swift in Sources */,
+				A2000000000000000000000F /* ContentView.swift in Sources */,
+				A20000000000000000000011 /* InfoView.swift in Sources */,
+				A20000000000000000000013 /* LogsView.swift in Sources */,
+				A20000000000000000000015 /* SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A8000000000000000000002D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A8000000000000000000002E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A8000000000000000000002F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TgWsProxy/Info.plist;
+				LIBRARY_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)/rust";
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = "-ltgwsproxy";
+				PRODUCT_BUNDLE_IDENTIFIER = com.danusha.tgwsproxy;
+				PRODUCT_NAME = "TG WS Proxy";
+				SWIFT_OBJC_BRIDGING_HEADER = "TgWsProxy/TgWsProxy-Bridging-Header.h";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A80000000000000000000030 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TgWsProxy/Info.plist;
+				LIBRARY_SEARCH_PATHS = "$(BUILT_PRODUCTS_DIR)/rust";
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = "-ltgwsproxy";
+				PRODUCT_BUNDLE_IDENTIFIER = com.danusha.tgwsproxy;
+				PRODUCT_NAME = "TG WS Proxy";
+				SWIFT_OBJC_BRIDGING_HEADER = "TgWsProxy/TgWsProxy-Bridging-Header.h";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A7000000000000000000002C /* Build configuration list for PBXProject "TgWsProxy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A8000000000000000000002D /* Debug */,
+				A8000000000000000000002E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A70000000000000000000027 /* Build configuration list for PBXNativeTarget "TgWsProxy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A8000000000000000000002F /* Debug */,
+				A80000000000000000000030 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A5000000000000000000002B /* Project object */;
+}

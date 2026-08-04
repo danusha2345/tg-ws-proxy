@@ -1,17 +1,20 @@
 [package]
-name = "tg-ws-proxy-android"
+name = "tg-ws-proxy-ios"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 publish = false
 
 [lib]
-name = "tg_ws_proxy_android"
-crate-type = ["cdylib"]
+name = "tgwsproxy"
+crate-type = ["staticlib", "lib"]
 
 [dependencies]
-jni = "0.21.1"
 tg-ws-proxy-mobile = { path = "../mobile-core" }
+
+[dev-dependencies]
+serde_json = "1.0.151"
+tempfile = "3.27.0"
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }

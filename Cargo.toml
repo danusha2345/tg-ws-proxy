@@ -21,7 +21,7 @@ include = [
 ]
 
 [workspace]
-members = ["crates/android-bridge"]
+members = ["crates/android-bridge", "crates/ios-bridge", "crates/mobile-core"]
 resolver = "2"
 
 [lib]

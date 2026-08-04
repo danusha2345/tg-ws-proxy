@@ -2785,8 +2785,24 @@ dependencies = [
 name = "tg-ws-proxy-android"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "jni 0.21.1",
+ "tg-ws-proxy-mobile",
+]
+
+[[package]]
+name = "tg-ws-proxy-ios"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "tempfile",
+ "tg-ws-proxy-mobile",
+]
+
+[[package]]
+name = "tg-ws-proxy-mobile"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
  "serde",
  "serde_json",
  "tempfile",

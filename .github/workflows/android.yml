@@ -7,6 +7,7 @@ on:
     paths:
       - "android/**"
       - "crates/android-bridge/**"
+      - "crates/mobile-core/**"
       - "src/**"
       - "Cargo.toml"
       - "Cargo.lock"
@@ -15,6 +16,7 @@ on:
     paths:
       - "android/**"
       - "crates/android-bridge/**"
+      - "crates/mobile-core/**"
       - "src/**"
       - "Cargo.toml"
       - "Cargo.lock"
@@ -75,8 +77,8 @@ jobs:
       - name: Check Rust bridge
         run: |
           cargo fmt --all -- --check
-          cargo clippy --locked -p tg-ws-proxy-android --all-targets -- -D warnings
-          cargo test --locked -p tg-ws-proxy-android
+          cargo clippy --locked -p tg-ws-proxy-android -p tg-ws-proxy-mobile --all-targets -- -D warnings
+          cargo test --locked -p tg-ws-proxy-android -p tg-ws-proxy-mobile
 
       - name: Test, lint and build Android app
         working-directory: android

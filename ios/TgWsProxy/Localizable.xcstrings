@@ -1,0 +1,897 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "32 hex characters": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "32 hex-символа"
+          }
+        }
+      }
+    },
+    "A new secret was generated.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сгенерирован новый секрет."
+          }
+        }
+      }
+    },
+    "About": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "О программе"
+          }
+        }
+      }
+    },
+    "Active": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активные"
+          }
+        }
+      }
+    },
+    "Address": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Адрес"
+          }
+        }
+      }
+    },
+    "Background limits": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ограничения фона"
+          }
+        }
+      }
+    },
+    "Clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Очистить"
+          }
+        }
+      }
+    },
+    "Cloudflare fallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Резерв через Cloudflare"
+          }
+        }
+      }
+    },
+    "Connect Telegram": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключить Telegram"
+          }
+        }
+      }
+    },
+    "Connection pool": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пул соединений"
+          }
+        }
+      }
+    },
+    "Copy tg://proxy link": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопировать ссылку tg://proxy"
+          }
+        }
+      }
+    },
+    "Could not build the configuration: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось собрать конфигурацию: %@"
+          }
+        }
+      }
+    },
+    "Credits": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Благодарности"
+          }
+        }
+      }
+    },
+    "Failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ошибка"
+          }
+        }
+      }
+    },
+    "Fake TLS domain": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Домен Fake TLS"
+          }
+        }
+      }
+    },
+    "Generate a new secret": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сгенерировать новый секрет"
+          }
+        }
+      }
+    },
+    "How it works": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Как это работает"
+          }
+        }
+      }
+    },
+    "Links": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ссылки"
+          }
+        }
+      }
+    },
+    "Listener": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слушатель"
+          }
+        }
+      }
+    },
+    "Logs": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Логи"
+          }
+        }
+      }
+    },
+    "Masking": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Маскировка"
+          }
+        }
+      }
+    },
+    "Masking upstream": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upstream маскировки"
+          }
+        }
+      }
+    },
+    "Opens the app and starts the local MTProto proxy.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открывает приложение и запускает локальный MTProto-прокси."
+          }
+        }
+      }
+    },
+    "Original project: Flowseal/tg-ws-proxy. The silent audio keep-alive and the Shortcuts automation follow the MIT licensed iOS port by mIwr. Thanks to amurcanov, IMDelewer and MushroomSquad, whose ports mapped out what iOS does and does not allow.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Исходный проект: Flowseal/tg-ws-proxy. Удержание в фоне через беззвучное аудио и автоматизация «Быстрыми командами» повторяют MIT-порт mIwr. Спасибо amurcanov, IMDelewer и MushroomSquad — их порты показали, что iOS разрешает, а что нет."
+          }
+        }
+      }
+    },
+    "Point Telegram at the proxy with Connect Telegram, or enter it manually in Settings → Data and Storage → Proxy: server 127.0.0.1, the port from Settings and the secret shown there with a dd prefix.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите «Подключить Telegram» или пропишите прокси вручную: Настройки → Данные и память → Прокси, сервер 127.0.0.1, порт из настроек и секрет оттуда же с префиксом dd."
+          }
+        }
+      }
+    },
+    "Port": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Порт"
+          }
+        }
+      }
+    },
+    "Project on GitHub": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проект на GitHub"
+          }
+        }
+      }
+    },
+    "Proxy": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прокси"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновить"
+          }
+        }
+      }
+    },
+    "Rejected": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отклонённые"
+          }
+        }
+      }
+    },
+    "Report an issue": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сообщить о проблеме"
+          }
+        }
+      }
+    },
+    "Requires a Fake TLS domain and must differ from it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Требует домен Fake TLS и должен от него отличаться."
+          }
+        }
+      }
+    },
+    "Routes": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Маршруты"
+          }
+        }
+      }
+    },
+    "Running": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Работает"
+          }
+        }
+      }
+    },
+    "Save": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить"
+          }
+        }
+      }
+    },
+    "Saved. The values apply on the next start.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранено. Значения применятся при следующем запуске."
+          }
+        }
+      }
+    },
+    "Secret": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Секрет"
+          }
+        }
+      }
+    },
+    "Separate several domains with a comma, a space or a new line.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Несколько доменов разделяйте запятой, пробелом или переносом строки."
+          }
+        }
+      }
+    },
+    "Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки"
+          }
+        }
+      }
+    },
+    "Share": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поделиться"
+          }
+        }
+      }
+    },
+    "Shortcuts": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Быстрые команды"
+          }
+        }
+      }
+    },
+    "Show secret": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показать секрет"
+          }
+        }
+      }
+    },
+    "Start": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустить"
+          }
+        }
+      }
+    },
+    "Start TG WS Proxy": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустить TG WS Proxy"
+          }
+        }
+      }
+    },
+    "Start TG WS Proxy in the background": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустить TG WS Proxy в фоне"
+          }
+        }
+      }
+    },
+    "Start in the background": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запуск в фоне"
+          }
+        }
+      }
+    },
+    "Start proxy": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запустить прокси"
+          }
+        }
+      }
+    },
+    "Starting": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускается"
+          }
+        }
+      }
+    },
+    "Starts the local MTProto proxy without opening the app.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускает локальный MTProto-прокси, не открывая приложение."
+          }
+        }
+      }
+    },
+    "Stop": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановить"
+          }
+        }
+      }
+    },
+    "Stop TG WS Proxy": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановить TG WS Proxy"
+          }
+        }
+      }
+    },
+    "Stop proxy": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановить прокси"
+          }
+        }
+      }
+    },
+    "Stop the proxy to change the settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановите прокси, чтобы менять настройки."
+          }
+        }
+      }
+    },
+    "Stopped": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Остановлен"
+          }
+        }
+      }
+    },
+    "Stopping": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Останавливается"
+          }
+        }
+      }
+    },
+    "Stops the local MTProto proxy.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Останавливает локальный MTProto-прокси."
+          }
+        }
+      }
+    },
+    "TCP fallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TCP-резерв"
+          }
+        }
+      }
+    },
+    "The Fake TLS domain and the masking upstream must differ.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Домен Fake TLS и upstream маскировки должны различаться."
+          }
+        }
+      }
+    },
+    "The Fake TLS domain is not a valid host name.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Домен Fake TLS не является корректным именем хоста."
+          }
+        }
+      }
+    },
+    "The Worker domain list contains an invalid host name.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В списке доменов Worker есть некорректное имя хоста."
+          }
+        }
+      }
+    },
+    "The app runs the same Rust core as the desktop and Android builds. It listens on 127.0.0.1 and forwards Telegram traffic over a TLS WebSocket, a Cloudflare Worker or a plain TCP fallback.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложение запускает то же Rust-ядро, что и десктоп с Android. Оно слушает 127.0.0.1 и передаёт трафик Telegram через TLS WebSocket, Cloudflare Worker или обычный TCP-резерв."
+          }
+        }
+      }
+    },
+    "The background action returns false when iOS refuses to launch the app for it. Branch on that result and run the in-app action as the fallback.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фоновое действие возвращает false, если iOS отказалась запускать под него приложение. Разветвите команду по этому результату и вызовите действие с открытием приложения."
+          }
+        }
+      }
+    },
+    "The core has not written anything yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ядро ещё ничего не записало."
+          }
+        }
+      }
+    },
+    "The core refused to start.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ядро отказалось запускаться."
+          }
+        }
+      }
+    },
+    "The core returned an unreadable response.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ядро вернуло нечитаемый ответ."
+          }
+        }
+      }
+    },
+    "The core returned an unreadable status.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ядро вернуло нечитаемый статус."
+          }
+        }
+      }
+    },
+    "The link was copied.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ссылка скопирована."
+          }
+        }
+      }
+    },
+    "The masking upstream is not a valid host name.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upstream маскировки не является корректным именем хоста."
+          }
+        }
+      }
+    },
+    "The masking upstream requires a Fake TLS domain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upstream маскировки требует домен Fake TLS."
+          }
+        }
+      }
+    },
+    "The pool size must be between 0 and 128.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Размер пула должен быть от 0 до 128."
+          }
+        }
+      }
+    },
+    "The port must be between 1 and 65535.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Порт должен быть от 1 до 65535."
+          }
+        }
+      }
+    },
+    "The proxy started, but background audio is unavailable. It will stop when the app leaves the screen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прокси запущен, но фоновое аудио недоступно. Он остановится, когда приложение уйдёт с экрана."
+          }
+        }
+      }
+    },
+    "The proxy stops when you force quit the app from the app switcher, and iOS may still reclaim the process under memory pressure. A build signed with a paid Apple Developer account could use a Network Extension instead; this free build deliberately does not.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прокси останавливается, если закрыть приложение свайпом из переключателя задач; при нехватке памяти iOS тоже может выгрузить процесс. Сборка с платным Apple Developer-аккаунтом могла бы использовать Network Extension — эта бесплатная сборка сознательно этого не делает."
+          }
+        }
+      }
+    },
+    "The secret must be exactly 32 hex characters.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Секрет должен состоять ровно из 32 hex-символов."
+          }
+        }
+      }
+    },
+    "The stored secret is malformed. Generate a new one.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранённый секрет повреждён. Сгенерируйте новый."
+          }
+        }
+      }
+    },
+    "Three actions are exposed to Shortcuts: start in the background, start in the app and stop. Automate them on \"When Telegram is opened\" and \"When Telegram is closed\" so the audio session — and the battery cost — only lasts while you actually use Telegram.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В «Быстрые команды» отдаются три действия: запуск в фоне, запуск в приложении и остановка. Повесьте их на автоматизации «Когда открывается Telegram» и «Когда Telegram закрывается», чтобы аудиосессия — и расход батареи — жила только пока вы реально пользуетесь Telegram."
+          }
+        }
+      }
+    },
+    "Total": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всего"
+          }
+        }
+      }
+    },
+    "Version": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Версия"
+          }
+        }
+      }
+    },
+    "While the proxy runs the app plays silent audio so iOS keeps it alive after you switch to Telegram. Force quitting the app from the app switcher stops the proxy.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока прокси работает, приложение проигрывает беззвучный аудиопоток, чтобы iOS не выгружала его после перехода в Telegram. Если закрыть приложение свайпом из переключателя задач, прокси остановится."
+          }
+        }
+      }
+    },
+    "Worker domains": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Домены Worker"
+          }
+        }
+      }
+    },
+    "iOS has no foreground service. This build keeps the listener alive with the audio background mode: while the proxy runs the app loops inaudible silence, which costs extra battery. Other apps keep playing their own audio.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В iOS нет foreground service. Эта сборка держит слушатель живым через фоновый режим audio: пока прокси работает, приложение зациклено проигрывает неслышимую тишину, и это расходует батарею. Звук других приложений при этом не прерывается."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

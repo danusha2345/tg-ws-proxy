@@ -100,6 +100,14 @@ Android-приложение собирает Rust-ядро через JNI и з
 Инструкция по установке, сборке и тестированию:
 [TG WS Proxy для Android](./README.android.md).
 
+### iOS
+
+iOS-сборка живёт в ветке `ios-port` и запускает то же Rust-ядро через C ABI.
+Network Extension она не использует, поэтому подписывается бесплатным Apple ID;
+в фоне приложение удерживается режимом `audio`. Готовых подписанных сборок нет —
+IPA собирается из исходников или берётся из артефактов CI. Подробности и
+ограничения: [TG WS Proxy для iOS](./README.ios.md).
+
 ### Docker
 
 ```bash
@@ -155,6 +163,7 @@ Telegram Desktop → MTProto Proxy (127.0.0.1:1443) → TLS WebSocket → Telegr
 - [Тестовые DC Telegram](./TestDc.md)
 - [Файлы конфигурации tray](./TrayConfig.md)
 - [Android](./README.android.md)
+- [iOS](./README.ios.md)
 - [Руководство для контрибьюторов](./CONTRIBUTING.md)
 
 ### Инструкции по ОС
@@ -163,6 +172,7 @@ Telegram Desktop → MTProto Proxy (127.0.0.1:1443) → TLS WebSocket → Telegr
 - [macOS](./README.macos.md)
 - [Linux](./README.linux.md)
 - [Android](./README.android.md)
+- [iOS](./README.ios.md)
 
 ## Происхождение
 
