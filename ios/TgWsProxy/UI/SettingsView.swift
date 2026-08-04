@@ -1,7 +1,11 @@
 import SwiftUI
 
+/// Every field is a draft: nothing reaches the stored settings, and therefore
+/// the next proxy start, until Save is pressed. This matches the Android client,
+/// where changed parameters also apply on the next start.
 struct SettingsView: View {
     @EnvironmentObject private var controller: ProxyController
+    @State private var draft = ProxySettings()
     @State private var portText = ""
     @State private var poolSizeText = ""
     @State private var secretDraft = ""
@@ -49,9 +53,12 @@ struct SettingsView: View {
                     }
                     Toggle("Show secret", isOn: $showSecret)
                     Button("Generate a new secret") {
-                        controller.regenerateSecret()
-                        secretDraft = controller.secret
-                        notice = String(localized: "A new secret was generated.")
+                        if let error = controller.regenerateSecret() {
+                            notice = error
+                        } else {
+                            secretDraft = controller.secret ?? ""
+                            notice = String(localized: "A new secret was generated.")
+                        }
                     }
                     Button("Copy tg://proxy link") {
                         controller.copyTelegramLink()
@@ -60,7 +67,7 @@ struct SettingsView: View {
                 }
 
                 Section("Routes") {
-                    Toggle("Cloudflare fallback", isOn: $controller.settings.fallbackCfproxy)
+                    Toggle("Cloudflare fallback", isOn: $draft.fallbackCfproxy)
                     HStack {
                         Text("Connection pool")
                         Spacer()
@@ -73,7 +80,7 @@ struct SettingsView: View {
                         Text("Worker domains")
                         TextField(
                             "worker.example.workers.dev",
-                            text: $controller.settings.workerDomains,
+                            text: $draft.workerDomains,
                             axis: .vertical
                         )
                         .autocorrectionDisabled()
@@ -88,14 +95,14 @@ struct SettingsView: View {
                 Section("Masking") {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Fake TLS domain")
-                        TextField("example.com", text: $controller.settings.fakeTlsDomain)
+                        TextField("example.com", text: $draft.fakeTlsDomain)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                             .keyboardType(.URL)
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Masking upstream")
-                        TextField("upstream.example.com", text: $controller.settings.maskingUpstream)
+                        TextField("upstream.example.com", text: $draft.maskingUpstream)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
                             .keyboardType(.URL)
@@ -123,9 +130,10 @@ struct SettingsView: View {
     }
 
     private func loadDrafts() {
-        portText = String(controller.settings.port)
-        poolSizeText = String(controller.settings.poolSize)
-        secretDraft = controller.secret
+        draft = controller.settings
+        portText = String(draft.port)
+        poolSizeText = String(draft.poolSize)
+        secretDraft = controller.secret ?? ""
     }
 
     private func save() {
@@ -138,14 +146,14 @@ struct SettingsView: View {
             return
         }
         let secret = secretDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        if secret != controller.secret {
-            guard controller.replaceSecret(with: secret) else {
-                notice = String(localized: "The secret must be exactly 32 hex characters.")
-                return
-            }
+        if secret != controller.secret, let error = controller.replaceSecret(with: secret) {
+            notice = error
+            return
         }
-        controller.settings.port = port
-        controller.settings.poolSize = poolSize
+
+        draft.port = port
+        draft.poolSize = poolSize
+        controller.settings = draft
         controller.saveSettings()
         loadDrafts()
         notice = String(localized: "Saved. The values apply on the next start.")

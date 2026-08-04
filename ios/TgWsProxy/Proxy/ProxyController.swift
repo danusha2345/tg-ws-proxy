@@ -24,7 +24,9 @@ final class ProxyController: ObservableObject {
         }
     }
 
-    var secret: String { store.secret() }
+    /// Nil when the Keychain refuses to hand the secret over, which is a
+    /// transient state rather than a reason to mint a new one.
+    var secret: String? { try? store.secret() }
 
     /// The link handed to Telegram. While the core runs it reports the value it
     /// actually bound, otherwise it is composed from the pending settings.
@@ -32,6 +34,7 @@ final class ProxyController: ObservableObject {
         if let reported = status.telegramUrl, let url = URL(string: reported) {
             return url
         }
+        guard let secret else { return nil }
         return URL(string: "tg://proxy?server=127.0.0.1&port=\(settings.port)&secret=dd\(secret)")
     }
 
@@ -142,7 +145,13 @@ final class ProxyController: ObservableObject {
         let fresh = NativeBridge.status()
         status = fresh
 
-        guard !fresh.isActive else { return }
+        guard !fresh.isActive else {
+            // The audio session can die without posting any of the
+            // notifications KeepAliveController listens for; this is the
+            // watchdog that notices and re-arms it.
+            KeepAliveController.shared.ensureRunning()
+            return
+        }
         stopPolling()
         KeepAliveController.shared.stop()
         if fresh.state == "failed", let error = fresh.error, errorMessage == nil {
@@ -158,16 +167,28 @@ final class ProxyController: ObservableObject {
         settings = store.load()
     }
 
-    func regenerateSecret() {
-        _ = store.regenerateSecret()
-        objectWillChange.send()
+    /// Returns the error to show, or nil on success.
+    func regenerateSecret() -> String? {
+        do {
+            _ = try store.regenerateSecret()
+            objectWillChange.send()
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
     }
 
-    func replaceSecret(with secret: String) -> Bool {
-        guard ProxyInputValidator.validSecret(secret) else { return false }
-        store.replaceSecret(with: secret)
-        objectWillChange.send()
-        return true
+    func replaceSecret(with secret: String) -> String? {
+        guard ProxyInputValidator.validSecret(secret) else {
+            return String(localized: "The secret must be exactly 32 hex characters.")
+        }
+        do {
+            try store.replaceSecret(with: secret)
+            objectWillChange.send()
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
     }
 
     /// Returns the first user-visible reason the settings cannot be applied.
@@ -195,8 +216,13 @@ final class ProxyController: ObservableObject {
         if !masking.isEmpty, masking.lowercased() == fakeTls.lowercased() {
             return String(localized: "The Fake TLS domain and the masking upstream must differ.")
         }
-        if !ProxyInputValidator.validSecret(secret) {
-            return String(localized: "The stored secret is malformed. Generate a new one.")
+        do {
+            let stored = try store.secret()
+            guard ProxyInputValidator.validSecret(stored) else {
+                return String(localized: "The stored secret is malformed. Generate a new one.")
+            }
+        } catch {
+            return error.localizedDescription
         }
         return nil
     }

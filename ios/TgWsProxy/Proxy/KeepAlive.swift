@@ -19,6 +19,10 @@ final class KeepAliveController {
     private var player: AVAudioPlayer?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     private var observersInstalled = false
+    /// Set while the proxy needs the session. Cleared on an explicit stop and
+    /// on a failed restart, so a device that keeps refusing the session is not
+    /// retried once per second forever.
+    private var wantsSession = false
 
     var isActive: Bool { player?.isPlaying ?? false }
 
@@ -30,6 +34,7 @@ final class KeepAliveController {
     func start() -> Bool {
         installObservers()
         beginBackgroundTask()
+        wantsSession = true
         guard !isActive else { return true }
 
         let session = AVAudioSession.sharedInstance()
@@ -67,7 +72,20 @@ final class KeepAliveController {
         return true
     }
 
+    /// Re-arms the session if it went away while the proxy still needs it.
+    /// Called from the status poll, which is the only thing guaranteed to run
+    /// while the proxy is up.
+    func ensureRunning() {
+        guard wantsSession, !isActive else { return }
+        AppLog.shared.append("keep-alive: session dropped, restarting")
+        if !start() {
+            wantsSession = false
+            AppLog.shared.append("keep-alive: restart failed, giving up")
+        }
+    }
+
     func stop() {
+        wantsSession = false
         player?.stop()
         player = nil
         try? AVAudioSession.sharedInstance().setActive(
@@ -97,61 +115,58 @@ final class KeepAliveController {
 
     // MARK: - Session recovery
 
+    /// Audio session notifications are posted on whichever thread the media
+    /// daemon happens to use, so they are delivered on the main queue and the
+    /// state is only touched from a main actor hop.
     private func installObservers() {
         guard !observersInstalled else { return }
         observersInstalled = true
         let center = NotificationCenter.default
+
+        // A phone call or another exclusive session stops playback; restart it
+        // once the interruption ends.
         center.addObserver(
-            self,
-            selector: #selector(handleInterruption),
-            name: AVAudioSession.interruptionNotification,
-            object: nil
-        )
+            forName: AVAudioSession.interruptionNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard
+                let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                let type = AVAudioSession.InterruptionType(rawValue: raw),
+                type == .ended
+            else { return }
+            Task { @MainActor in KeepAliveController.shared.ensureRunning() }
+        }
+
+        // Unplugging headphones pauses the player on some routes.
         center.addObserver(
-            self,
-            selector: #selector(handleRouteChange),
-            name: AVAudioSession.routeChangeNotification,
-            object: nil
-        )
+            forName: AVAudioSession.routeChangeNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard
+                let raw = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                let reason = AVAudioSession.RouteChangeReason(rawValue: raw),
+                reason == .oldDeviceUnavailable
+            else { return }
+            Task { @MainActor in KeepAliveController.shared.ensureRunning() }
+        }
+
+        // The media daemon can be restarted by the system, which invalidates
+        // the player object itself.
         center.addObserver(
-            self,
-            selector: #selector(handleMediaServicesReset),
-            name: AVAudioSession.mediaServicesWereResetNotification,
-            object: nil
-        )
+            forName: AVAudioSession.mediaServicesWereResetNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in KeepAliveController.shared.rebuildPlayer() }
+        }
     }
 
-    /// A phone call or another exclusive session stops playback; restart it once
-    /// the interruption ends, but only while the proxy still needs us.
-    @objc private func handleInterruption(_ notification: Notification) {
-        guard
-            let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-            let type = AVAudioSession.InterruptionType(rawValue: raw)
-        else { return }
-        guard type == .ended else { return }
-        restartIfNeeded()
-    }
-
-    /// Unplugging headphones pauses the player on some routes.
-    @objc private func handleRouteChange(_ notification: Notification) {
-        guard
-            let raw = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
-            let reason = AVAudioSession.RouteChangeReason(rawValue: raw),
-            reason == .oldDeviceUnavailable
-        else { return }
-        restartIfNeeded()
-    }
-
-    /// The media daemon can be restarted by the system, which invalidates the
-    /// player object itself.
-    @objc private func handleMediaServicesReset() {
+    /// Drops the player so the next restart builds a fresh one.
+    fileprivate func rebuildPlayer() {
         player = nil
-        restartIfNeeded()
-    }
-
-    private func restartIfNeeded() {
-        guard ProxyController.shared.status.isActive, !isActive else { return }
-        start()
+        ensureRunning()
     }
 
     /// Builds a mono 16-bit PCM WAV of pure silence in memory, so the app does

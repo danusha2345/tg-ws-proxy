@@ -299,6 +299,14 @@ pub fn start(config_json: &str) -> String {
     response(start_proxy(config_json))
 }
 
+/// Builds a failure response for a caller that could not even hand over a
+/// configuration. Goes through the same serializer as every other response, so
+/// a message containing quotes cannot produce malformed JSON.
+#[must_use]
+pub fn failure(message: &str) -> String {
+    response(Err(anyhow!("{message}")))
+}
+
 /// Requests a graceful shutdown and returns a response object.
 #[must_use]
 pub fn stop() -> String {
@@ -342,6 +350,18 @@ mod tests {
         assert_eq!(
             proxy_config.telegram_url("127.0.0.1"),
             "tg://proxy?server=127.0.0.1&port=1443&secret=dd00112233445566778899aabbccddeeff"
+        );
+    }
+
+    #[test]
+    fn failure_response_escapes_quotes_and_backslashes() {
+        let value = failure(r#"invalid "config" \ string"#);
+        let parsed: serde_json::Value =
+            serde_json::from_str(&value).expect("failure response must be valid JSON");
+        assert_eq!(parsed["ok"], serde_json::Value::Bool(false));
+        assert_eq!(
+            parsed["error"].as_str().unwrap(),
+            r#"invalid "config" \ string"#
         );
     }
 

@@ -804,6 +804,28 @@
         }
       }
     },
+    "The secret could not be saved to the Keychain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось сохранить секрет в Keychain."
+          }
+        }
+      }
+    },
+    "The secret is locked. Unlock the device and try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Секрет заблокирован. Разблокируйте устройство и повторите."
+          }
+        }
+      }
+    },
     "The secret must be exactly 32 hex characters.": {
       "extractionState": "manual",
       "localizations": {

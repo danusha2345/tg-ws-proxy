@@ -15,7 +15,9 @@ pub extern "system" fn Java_com_danusha_tgwsproxy_NativeBridge_nativeStart(
 ) -> jstring {
     let value = match env.get_string(&config) {
         Ok(config) => tg_ws_proxy_mobile::start(&String::from(config)),
-        Err(error) => format!(r#"{{"ok":false,"error":"invalid configuration string: {error}"}}"#),
+        Err(error) => {
+            tg_ws_proxy_mobile::failure(&format!("invalid configuration string: {error}"))
+        }
     };
     java_string(&env, value)
 }

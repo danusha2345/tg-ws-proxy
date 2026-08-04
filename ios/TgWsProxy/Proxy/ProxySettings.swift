@@ -120,22 +120,31 @@ struct ProxySettingsStore {
     }
 
     /// Returns the stored secret, generating and persisting one on first use.
-    func secret() -> String {
-        if let stored = keychain.read(), ProxyInputValidator.validSecret(stored) {
+    ///
+    /// A Keychain that is merely empty is a first run; a Keychain that refuses
+    /// to answer is not. Generating a secret in the second case would silently
+    /// invalidate the proxy entry the user already saved in Telegram, so the
+    /// failure is propagated instead.
+    func secret() throws -> String {
+        switch keychain.read() {
+        case .found(let stored) where ProxyInputValidator.validSecret(stored):
             return stored
+        case .found(_), .missing:
+            let generated = Self.generateSecret()
+            try keychain.write(generated)
+            return generated
+        case .failed(let status):
+            throw SecretError.unavailable(status)
         }
-        let generated = Self.generateSecret()
-        keychain.write(generated)
-        return generated
     }
 
-    func replaceSecret(with secret: String) {
-        keychain.write(secret.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+    func replaceSecret(with secret: String) throws {
+        try keychain.write(secret.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
     }
 
-    func regenerateSecret() -> String {
+    func regenerateSecret() throws -> String {
         let generated = Self.generateSecret()
-        keychain.write(generated)
+        try keychain.write(generated)
         return generated
     }
 
@@ -156,7 +165,7 @@ struct ProxySettingsStore {
 
     /// Serialises the settings into the JSON contract shared with Android.
     func configurationJSON(for settings: ProxySettings) throws -> String {
-        let configuration = ProxyConfiguration(
+        let configuration = try ProxyConfiguration(
             port: settings.port,
             secret: secret(),
             poolSize: settings.poolSize,
@@ -175,6 +184,31 @@ struct ProxySettingsStore {
     }
 }
 
+/// Why the secret could not be produced.
+enum SecretError: LocalizedError {
+    /// The Keychain holds an item but refused to return it, which happens
+    /// before the first unlock after a reboot.
+    case unavailable(OSStatus)
+    case notStored(OSStatus)
+
+    var errorDescription: String? {
+        switch self {
+        case .unavailable:
+            return String(
+                localized: "The secret is locked. Unlock the device and try again."
+            )
+        case .notStored:
+            return String(localized: "The secret could not be saved to the Keychain.")
+        }
+    }
+}
+
+private enum KeychainReadResult {
+    case found(String)
+    case missing
+    case failed(OSStatus)
+}
+
 /// Minimal Keychain wrapper for a single generic password item.
 private struct KeychainSecretStore {
     let service: String
@@ -188,25 +222,40 @@ private struct KeychainSecretStore {
         ]
     }
 
-    func read() -> String? {
+    func read() -> KeychainReadResult {
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
 
         var item: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
-              let data = item as? Data
-        else { return nil }
-        return String(data: data, encoding: .utf8)
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        switch status {
+        case errSecSuccess:
+            guard let data = item as? Data, let value = String(data: data, encoding: .utf8) else {
+                // The item exists but is not the string we wrote; replacing it
+                // is safe because it can never have matched Telegram either.
+                return .missing
+            }
+            return .found(value)
+        case errSecItemNotFound:
+            return .missing
+        default:
+            return .failed(status)
+        }
     }
 
     /// Stores the value with `AfterFirstUnlock` accessibility so the proxy can
     /// restart from a Shortcut while the device is locked.
-    func write(_ value: String) {
+    func write(_ value: String) throws {
         SecItemDelete(baseQuery as CFDictionary)
         var query = baseQuery
         query[kSecValueData as String] = Data(value.utf8)
         query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(query as CFDictionary, nil)
+        let status = SecItemAdd(query as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            // Returning a secret that was not persisted would rotate it again
+            // on the next call, so this has to be reported.
+            throw SecretError.notStored(status)
+        }
     }
 }
