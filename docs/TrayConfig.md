@@ -26,12 +26,18 @@ Tray-приложение хранит данные в:
   "log_max_mb": 5.0,
   "check_updates": true,
   "cfproxy": true,
+  "cfproxy_user_domain_enabled": false,
   "cfproxy_user_domain": [],
+  "cfproxy_worker_enabled": false,
   "cfproxy_worker_domain": [],
   "force_test_dc": false,
   "appearance": "auto"
 }
 ```
+
+Поля `cfproxy_user_domain_enabled` и `cfproxy_worker_enabled` управляют
+использованием сохранённых доменов отдельно от самих списков. Для старого
+config без этих флагов непустой список автоматически считается включённым.
 
 Ключ `check_updates`: при `true` Rust tray проверяет стабильные `rust-v*`
 релизы на GitHub. Через меню можно скачать подходящий asset; перед запуском он

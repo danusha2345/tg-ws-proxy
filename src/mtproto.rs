@@ -214,10 +214,31 @@ impl MessageSplitter {
         if self.disabled {
             return vec![chunk.to_vec()];
         }
-        self.cipher_buffer.extend_from_slice(chunk);
         let mut plain = chunk.to_vec();
         self.decrypt.apply_keystream(&mut plain);
-        self.plain_buffer.extend_from_slice(&plain);
+        self.split_plain_and_cipher(&plain, chunk)
+    }
+
+    /// Splits bytes that have already been decrypted from the client and
+    /// re-encrypted for Telegram, avoiding a second AES-CTR pass.
+    pub fn split_reencrypted(&mut self, plain_chunk: &[u8], cipher_chunk: &[u8]) -> Vec<Vec<u8>> {
+        assert_eq!(
+            plain_chunk.len(),
+            cipher_chunk.len(),
+            "plain and encrypted MTProto chunks must have equal lengths"
+        );
+        if cipher_chunk.is_empty() {
+            return Vec::new();
+        }
+        if self.disabled {
+            return vec![cipher_chunk.to_vec()];
+        }
+        self.split_plain_and_cipher(plain_chunk, cipher_chunk)
+    }
+
+    fn split_plain_and_cipher(&mut self, plain_chunk: &[u8], cipher_chunk: &[u8]) -> Vec<Vec<u8>> {
+        self.cipher_buffer.extend_from_slice(cipher_chunk);
+        self.plain_buffer.extend_from_slice(plain_chunk);
 
         if self.cipher_buffer.len() > self.max_buffer {
             self.disabled = true;

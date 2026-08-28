@@ -70,13 +70,21 @@ fn intermediate_splitter_preserves_encrypted_packets_across_chunk_boundaries() {
     let encrypted = encrypt_for_splitter(&relay_init, &plain);
 
     let mut splitter = MessageSplitter::new(&relay_init, Transport::Intermediate, 1024);
-    assert!(splitter.split(&encrypted[..2]).is_empty());
-    assert!(splitter.split(&encrypted[2..7]).is_empty());
+    assert!(
+        splitter
+            .split_reencrypted(&plain[..2], &encrypted[..2])
+            .is_empty()
+    );
+    assert!(
+        splitter
+            .split_reencrypted(&plain[2..7], &encrypted[2..7])
+            .is_empty()
+    );
 
-    let first = splitter.split(&encrypted[7..10]);
+    let first = splitter.split_reencrypted(&plain[7..10], &encrypted[7..10]);
     assert_eq!(first, [encrypted[..first_plain.len()].to_vec()]);
 
-    let second = splitter.split(&encrypted[10..]);
+    let second = splitter.split_reencrypted(&plain[10..], &encrypted[10..]);
     assert_eq!(second, [encrypted[first_plain.len()..].to_vec()]);
     assert!(splitter.flush().is_empty());
 }
@@ -213,7 +221,10 @@ proptest! {
                 break;
             }
             let end = offset.saturating_add(*chunk_size).min(encrypted.len());
-            actual.extend(splitter.split(&encrypted[offset..end]));
+            actual.extend(splitter.split_reencrypted(
+                &plain[offset..end],
+                &encrypted[offset..end],
+            ));
             offset = end;
         }
 
