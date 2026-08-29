@@ -2741,7 +2741,7 @@ dependencies = [
 
 [[package]]
 name = "tg-ws-proxy"
-version = "1.9.1"
+version = "1.10.0"
 dependencies = [
  "aes",
  "anyhow",
@@ -2783,7 +2783,7 @@ dependencies = [
 
 [[package]]
 name = "tg-ws-proxy-android"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "jni 0.21.1",

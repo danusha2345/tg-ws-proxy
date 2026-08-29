@@ -859,9 +859,12 @@ async fn bridge_websocket(
             upload_bytes += read as u64;
             let mut data = buffer[..read].to_vec();
             upstream_crypto.client_decrypt.apply_keystream(&mut data);
-            upstream_crypto.telegram_encrypt.apply_keystream(&mut data);
             if let Some(splitter) = &mut splitter {
-                let parts = splitter.split(&data);
+                let mut encrypted = data.clone();
+                upstream_crypto
+                    .telegram_encrypt
+                    .apply_keystream(&mut encrypted);
+                let parts = splitter.split_reencrypted(&data, &encrypted);
                 if !parts.is_empty() {
                     up_sender
                         .send_batch(parts.iter().map(Vec::as_slice))
@@ -869,6 +872,7 @@ async fn bridge_websocket(
                         .map_err(io::Error::other)?;
                 }
             } else {
+                upstream_crypto.telegram_encrypt.apply_keystream(&mut data);
                 up_sender
                     .send_binary(&data)
                     .await

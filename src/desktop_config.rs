@@ -30,8 +30,10 @@ pub struct DesktopConfig {
     pub buf_kb: u64,
     pub pool_size: u64,
     pub cfproxy: bool,
+    pub cfproxy_user_domain_enabled: bool,
     #[serde(deserialize_with = "deserialize_domains")]
     pub cfproxy_user_domain: Vec<String>,
+    pub cfproxy_worker_enabled: bool,
     #[serde(deserialize_with = "deserialize_domains")]
     pub cfproxy_worker_domain: Vec<String>,
     pub force_test_dc: bool,
@@ -58,7 +60,9 @@ impl Default for DesktopConfig {
             buf_kb: 256,
             pool_size: 4,
             cfproxy: true,
+            cfproxy_user_domain_enabled: false,
             cfproxy_user_domain: Vec::new(),
+            cfproxy_worker_enabled: false,
             cfproxy_worker_domain: Vec::new(),
             force_test_dc: false,
             ws_keepalive_interval: 30,
@@ -94,8 +98,20 @@ impl DesktopConfig {
         let secret_was_missing = value
             .as_object()
             .is_some_and(|object| !object.contains_key("secret"));
-        let config: Self = serde_json::from_value(value)
+        let user_domain_enabled_was_missing = value
+            .as_object()
+            .is_some_and(|object| !object.contains_key("cfproxy_user_domain_enabled"));
+        let worker_enabled_was_missing = value
+            .as_object()
+            .is_some_and(|object| !object.contains_key("cfproxy_worker_enabled"));
+        let mut config: Self = serde_json::from_value(value)
             .with_context(|| format!("invalid config schema in {}", path.display()))?;
+        if user_domain_enabled_was_missing {
+            config.cfproxy_user_domain_enabled = !config.cfproxy_user_domain.is_empty();
+        }
+        if worker_enabled_was_missing {
+            config.cfproxy_worker_enabled = !config.cfproxy_worker_domain.is_empty();
+        }
         config.validate()?;
         #[cfg(unix)]
         restrict_config_permissions(path)?;
@@ -170,14 +186,16 @@ impl DesktopConfig {
             .iter()
             .map(|entry| crate::config::parse_dc_ip(entry))
             .collect::<Result<_>>()?;
-        if !self.cfproxy_user_domain.is_empty() {
+        if self.cfproxy_user_domain_enabled && !self.cfproxy_user_domain.is_empty() {
             config.cfproxy_domains = crate::config::normalize_domains(
                 self.cfproxy_user_domain.iter().map(String::as_str),
             )?;
         }
-        config.cfproxy_worker_domains = crate::config::normalize_domains(
-            self.cfproxy_worker_domain.iter().map(String::as_str),
-        )?;
+        if self.cfproxy_worker_enabled {
+            config.cfproxy_worker_domains = crate::config::normalize_domains(
+                self.cfproxy_worker_domain.iter().map(String::as_str),
+            )?;
+        }
         config.validate()?;
         Ok(config)
     }
@@ -398,6 +416,29 @@ mod tests {
     }
 
     #[test]
+    fn legacy_domain_lists_remain_enabled_when_flags_are_missing() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.json");
+        fs::write(
+            &path,
+            br#"{
+                "secret":"00112233445566778899aabbccddeeff",
+                "cfproxy_user_domain":["proxy.example"],
+                "cfproxy_worker_domain":["worker.example"]
+            }"#,
+        )
+        .unwrap();
+
+        let config = DesktopConfig::load_or_create(&path).unwrap();
+
+        assert!(config.cfproxy_user_domain_enabled);
+        assert!(config.cfproxy_worker_enabled);
+        let proxy = config.to_proxy_config().unwrap();
+        assert_eq!(proxy.cfproxy_domains, ["proxy.example"]);
+        assert_eq!(proxy.cfproxy_worker_domains, ["worker.example"]);
+    }
+
+    #[test]
     fn invalid_float_does_not_replace_existing_config() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("config.json");
@@ -449,7 +490,9 @@ mod tests {
         let config = DesktopConfig {
             secret: "00112233445566778899aabbccddeeff".to_owned(),
             dc_ip: vec!["4:149.154.167.220".to_owned()],
+            cfproxy_user_domain_enabled: true,
             cfproxy_user_domain: vec!["Proxy.Example".to_owned()],
+            cfproxy_worker_enabled: true,
             cfproxy_worker_domain: vec!["Worker.Example".to_owned()],
             ..DesktopConfig::default()
         };
@@ -464,6 +507,32 @@ mod tests {
         assert_eq!(proxy.cfproxy_domains, ["proxy.example"]);
         assert_eq!(proxy.cfproxy_worker_domains, ["worker.example"]);
         assert_eq!(proxy.dc_redirects.len(), 1);
+    }
+
+    #[test]
+    fn disabled_domains_are_preserved_but_not_applied() {
+        let config = DesktopConfig {
+            secret: "00112233445566778899aabbccddeeff".to_owned(),
+            cfproxy_user_domain_enabled: false,
+            cfproxy_user_domain: vec!["saved-proxy.example".to_owned()],
+            cfproxy_worker_enabled: false,
+            cfproxy_worker_domain: vec!["saved-worker.example".to_owned()],
+            ..DesktopConfig::default()
+        };
+
+        let proxy = config.to_proxy_config().unwrap();
+
+        assert_ne!(proxy.cfproxy_domains, ["saved-proxy.example"]);
+        assert!(proxy.cfproxy_worker_domains.is_empty());
+        let encoded = serde_json::to_value(config).unwrap();
+        assert_eq!(
+            encoded["cfproxy_user_domain"],
+            serde_json::json!(["saved-proxy.example"])
+        );
+        assert_eq!(
+            encoded["cfproxy_worker_domain"],
+            serde_json::json!(["saved-worker.example"])
+        );
     }
 
     #[test]
