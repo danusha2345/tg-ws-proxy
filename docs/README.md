@@ -1,5 +1,19 @@
 # TG WS Proxy — Rust
 
+## Скачать с GitLab
+
+Если GitHub недоступен, используйте публичное зеркало с файлами на GitLab:
+
+- [Windows, Linux и macOS — Rust 1.11.0](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/rust-v1.11.0)
+- [Android 0.2.0 — подписанные APK](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/android-v0.2.0)
+- [Исходники и ветки](https://gitlab.com/pipecpriam/tg-ws-proxy)
+
+Контрольные суммы находятся в файлах `SHA256SUMS.txt` и
+`SHA256SUMS-android.txt` внутри соответствующего релиза. Встроенный updater
+версий 1.11.0 / 0.2.0 пока обращается к GitHub; зеркало используется для
+ручного скачивания.
+
+
 [![Boosty](https://img.shields.io/badge/Boosty-Поддержать-FF7143?style=for-the-badge&logo=boosty&logoColor=white)](https://boosty.to/danusha/donate)
 
 ### Поддержать разработку форка
