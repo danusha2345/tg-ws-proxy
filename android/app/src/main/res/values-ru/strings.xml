@@ -1,18 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources
-    xmlns:tools="http://schemas.android.com/tools"
-    tools:locale="ru">
+<?xml version='1.0' encoding='utf-8'?>
+<resources xmlns:ns0="http://schemas.android.com/tools" ns0:locale="ru">
     <string name="app_name">TG WS Proxy</string>
-    <string name="app_kicker">ANDROID RELAY</string>
-    <string name="app_summary">Локальный мост Telegram → WebSocket</string>
-    <string name="status_label">СОСТОЯНИЕ ЛИНИИ</string>
+    <string name="app_summary">Telegram через локальный прокси</string>
     <string name="status_stopped">Остановлен</string>
     <string name="status_starting">Запускается…</string>
-    <string name="status_running">Работает</string>
+    <string name="status_running">Прокси запущен</string>
     <string name="status_stopping">Останавливается…</string>
     <string name="status_failed">Ошибка</string>
-    <string name="endpoint_label">Локальная точка</string>
-    <string name="connections_label">Соединения</string>
+    <string name="endpoint_label">Адрес на этом устройстве</string>
+    <string name="connections_label">Соединения: сейчас / всего</string>
     <string name="traffic_label">Трафик</string>
     <string name="endpoint_format">127.0.0.1:%1$d</string>
     <string name="connections_format">%1$d / %2$d</string>
@@ -38,12 +34,12 @@
     <string name="battery_dialog_message">Для стабильной работы прокси отключите оптимизацию батареи для TG WS Proxy на следующем системном экране. Это действие подтверждаете вы.</string>
     <string name="not_now">Не сейчас</string>
     <string name="battery_settings_unavailable">Не удалось открыть настройки батареи на этом устройстве</string>
-    <string name="settings_title">Параметры линии</string>
+    <string name="settings_title">Настройки</string>
     <string name="port_hint">Порт</string>
-    <string name="secret_hint">Secret (32 hex-символа)</string>
-    <string name="generate_secret">Новый secret</string>
+    <string name="secret_hint">Ключ подключения (32 символа HEX)</string>
+    <string name="generate_secret">Создать новый ключ</string>
     <string name="pool_hint">Размер пула WebSocket</string>
-    <string name="cfproxy_label">Разрешить Worker/CfProxy fallback</string>
+    <string name="cfproxy_label">Резервный маршрут Cloudflare</string>
     <string name="worker_domains_hint">Домены Cloudflare Worker (через запятую или пробел)</string>
     <string name="fake_tls_hint">Fake TLS domain (необязательно)</string>
     <string name="masking_hint">Masking upstream (необязательно)</string>
@@ -68,5 +64,19 @@
     <string name="logs_empty">Лог пока пуст. Запустите прокси и обновите экран.</string>
     <string name="logs_share_title">Отправить лог TG WS Proxy</string>
     <string name="logs_tail">… показан конец журнала …\n%1$s</string>
-    <string name="test_warning">Стабильный канал · результаты тестов на телефонах приветствуются</string>
+    <string name="cf_help">Используется, если прямое соединение недоступно. Свои Worker-домены работают независимо от этого переключателя.</string>
+    <string name="settings_help">Обычно менять ничего не нужно. Параметры применяются при следующем запуске прокси.</string>
+    <string name="settings_locked">Чтобы изменить настройки, сначала остановите прокси на главном экране.</string>
+    <string name="hint_stopped">Запустите прокси, затем добавьте его в Telegram кнопкой ниже.</string>
+    <string name="hint_running">Теперь подключите Telegram. Этот статус означает, что локальный прокси готов принимать соединения.</string>
+    <string name="hint_starting">Подготавливаем локальный прокси. Это займёт несколько секунд.</string>
+    <string name="hint_stopping">Закрываем соединения. Дождитесь завершения.</string>
+    <string name="hint_failed">Не удалось запустить прокси. Проверьте настройки или откройте журнал для подробностей.</string>
+    <string name="local_notice">Работает только для Telegram. Другие приложения используют обычное подключение.</string>
+    <string name="back_home">Вернуться к подключению</string>
+    <string name="show_secret">Показать ключ</string>
+    <string name="hide_secret">Скрыть ключ</string>
+    <string name="version_label">Версия %1$s</string>
+    <string name="new_secret_title">Изменить ключ подключения?</string>
+    <string name="new_secret_message">После сохранения добавьте прокси в Telegram заново. Старая ссылка перестанет работать.</string>
 </resources>

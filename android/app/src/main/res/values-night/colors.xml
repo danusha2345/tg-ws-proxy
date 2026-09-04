@@ -1,0 +1,13 @@
+<resources>
+    <color name="ink">#101B2B</color>
+    <color name="panel">#19283C</color>
+    <color name="panel_raised">#22344B</color>
+    <color name="signal">#9BC5FF</color>
+    <color name="on_signal">#0C2D56</color>
+    <color name="running">#7CDBA3</color>
+    <color name="warning">#F1C56D</color>
+    <color name="danger">#FFADB4</color>
+    <color name="paper">#ECF2FA</color>
+    <color name="muted">#AEBFD3</color>
+    <color name="border">#40526A</color>
+</resources>

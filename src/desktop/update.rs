@@ -222,7 +222,7 @@ pub(super) fn launch(path: &Path) -> Result<bool> {
             .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script])
             .spawn()
             .context("не удалось запустить установщик обновления")?;
-        return Ok(true);
+        Ok(true)
     }
     #[cfg(not(windows))]
     {

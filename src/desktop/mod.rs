@@ -1,12 +1,14 @@
 mod icon;
 #[cfg(target_os = "linux")]
 mod linux;
-#[cfg(any(windows, target_os = "macos"))]
+#[cfg(target_os = "macos")]
 mod native;
 mod paths;
 #[cfg(not(any(target_os = "linux", windows, target_os = "macos")))]
 mod unsupported;
 mod update;
+#[cfg(any(windows, target_os = "linux"))]
+mod window;
 mod worker;
 
 use std::io;
@@ -42,9 +44,12 @@ impl Language {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum WorkerCommand {
     OpenTelegram,
+    #[cfg(not(windows))]
     CopyLink,
+    #[cfg(not(windows))]
     OpenSettings,
     Restart,
+    Stop,
     OpenLogs,
     CheckUpdates,
     DownloadUpdate,
@@ -201,10 +206,23 @@ fn run_platform(
     event_rx: tokio::sync::mpsc::UnboundedReceiver<WorkerEvent>,
     language: Language,
 ) -> Result<()> {
-    linux::run(command_tx.clone(), event_rx, language)
+    if std::env::var_os("TG_WS_PROXY_WINDOW").is_some() {
+        window::run(command_tx, event_rx, language)
+    } else {
+        linux::run(command_tx.clone(), event_rx, language)
+    }
 }
 
-#[cfg(any(windows, target_os = "macos"))]
+#[cfg(windows)]
+fn run_platform(
+    command_tx: &tokio::sync::mpsc::UnboundedSender<WorkerCommand>,
+    event_rx: tokio::sync::mpsc::UnboundedReceiver<WorkerEvent>,
+    language: Language,
+) -> Result<()> {
+    window::run(command_tx, event_rx, language)
+}
+
+#[cfg(target_os = "macos")]
 fn run_platform(
     command_tx: &tokio::sync::mpsc::UnboundedSender<WorkerCommand>,
     event_rx: tokio::sync::mpsc::UnboundedReceiver<WorkerEvent>,

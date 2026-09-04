@@ -1,18 +1,14 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources
-    xmlns:tools="http://schemas.android.com/tools"
-    tools:locale="en">
+<?xml version='1.0' encoding='utf-8'?>
+<resources xmlns:ns0="http://schemas.android.com/tools" ns0:locale="en">
     <string name="app_name">TG WS Proxy</string>
-    <string name="app_kicker">ANDROID RELAY</string>
-    <string name="app_summary">Local Telegram → WebSocket bridge</string>
-    <string name="status_label">LINE STATUS</string>
+    <string name="app_summary">Telegram through a local proxy</string>
     <string name="status_stopped">Stopped</string>
     <string name="status_starting">Starting…</string>
-    <string name="status_running">Running</string>
+    <string name="status_running">Proxy is running</string>
     <string name="status_stopping">Stopping…</string>
     <string name="status_failed">Failed</string>
-    <string name="endpoint_label">Local endpoint</string>
-    <string name="connections_label">Connections</string>
+    <string name="endpoint_label">Address on this device</string>
+    <string name="connections_label">Connections: active / total</string>
     <string name="traffic_label">Traffic</string>
     <string name="endpoint_format">127.0.0.1:%1$d</string>
     <string name="connections_format">%1$d / %2$d</string>
@@ -38,12 +34,12 @@
     <string name="battery_dialog_message">For reliable proxy operation, disable battery optimization for TG WS Proxy on the next system screen. You remain in control of this setting.</string>
     <string name="not_now">Not now</string>
     <string name="battery_settings_unavailable">Battery settings are unavailable on this device</string>
-    <string name="settings_title">Line settings</string>
+    <string name="settings_title">Settings</string>
     <string name="port_hint">Port</string>
-    <string name="secret_hint">Secret (32 hex characters)</string>
-    <string name="generate_secret">New secret</string>
+    <string name="secret_hint">Connection key (32 HEX characters)</string>
+    <string name="generate_secret">Generate a new key</string>
     <string name="pool_hint">WebSocket pool size</string>
-    <string name="cfproxy_label">Allow Worker/CfProxy fallback</string>
+    <string name="cfproxy_label">Cloudflare fallback</string>
     <string name="worker_domains_hint">Cloudflare Worker domains (comma or space separated)</string>
     <string name="fake_tls_hint">Fake TLS domain (optional)</string>
     <string name="masking_hint">Masking upstream (optional)</string>
@@ -68,6 +64,20 @@
     <string name="logs_empty">The log is empty. Start the proxy and refresh this screen.</string>
     <string name="logs_share_title">Share TG WS Proxy log</string>
     <string name="logs_tail">… showing the end of the log …\n%1$s</string>
-    <string name="test_warning">Stable release channel · real-device test reports are welcome</string>
     <string name="status_dot" translatable="false">●</string>
+    <string name="cf_help">Used when a direct connection is unavailable. Custom Worker domains work independently of this switch.</string>
+    <string name="settings_help">The defaults work for most users. Changes apply the next time you start the proxy.</string>
+    <string name="settings_locked">Stop the proxy on the home screen before editing settings.</string>
+    <string name="hint_stopped">Start the proxy, then add it to Telegram using the button below.</string>
+    <string name="hint_running">Now connect Telegram. This status means the local proxy is ready to accept connections.</string>
+    <string name="hint_starting">Preparing the local proxy. This takes a few seconds.</string>
+    <string name="hint_stopping">Closing connections. Please wait.</string>
+    <string name="hint_failed">Could not start the proxy. Check settings or open the log for details.</string>
+    <string name="local_notice">Only Telegram uses this proxy. Other apps keep their usual connection.</string>
+    <string name="back_home">Back to connection</string>
+    <string name="show_secret">Show key</string>
+    <string name="hide_secret">Hide key</string>
+    <string name="version_label">Version %1$s</string>
+    <string name="new_secret_title">Change connection key?</string>
+    <string name="new_secret_message">After saving, add the proxy to Telegram again. The old link will stop working.</string>
 </resources>

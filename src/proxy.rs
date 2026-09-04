@@ -387,7 +387,7 @@ impl Proxy {
             false
         };
 
-        if force_fallback || ip_cooled {
+        if force_fallback {
             Box::pin(self.fallback(prepared, client_init, test, relay_init, crypto)).await?;
             return Ok(());
         }
@@ -400,9 +400,6 @@ impl Proxy {
             Duration::from_secs(5)
         };
 
-        let allow_refill = !self
-            .cooldown_active(&self.inner.ip_fail_until, target)
-            .await;
         let mut websocket = if test {
             None
         } else {
@@ -413,10 +410,16 @@ impl Proxy {
                     client_init.media,
                     target,
                     domains.clone(),
-                    allow_refill,
+                    true,
                 )
                 .await
         };
+        // A background refill can recover while the direct IP is cooling down.
+        // Consume that connection before committing this client to fallback.
+        if ip_cooled && websocket.is_none() {
+            Box::pin(self.fallback(prepared, client_init, test, relay_init, crypto)).await?;
+            return Ok(());
+        }
         let pool_hit = websocket.is_some();
         let mut outcomes = Vec::new();
         if websocket.is_none() {

@@ -15,11 +15,18 @@ import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.View
+import android.view.KeyEvent
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ScrollView
+import android.text.method.PasswordTransformationMethod
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.content.FileProvider
@@ -49,8 +56,10 @@ class MainActivity : Activity() {
     private lateinit var maskingInput: EditText
     private lateinit var updateButton: Button
     private var currentStatus = ProxyStatus("stopped", null, null, 0, 0, 0, 0)
+    private val settingsBackCallback = if (Build.VERSION.SDK_INT >= 33) OnBackInvokedCallback { showSettings(false) } else null
+    private var settingsVisible = false
+    private var secretVisible = false
     private var pendingProxyStart = false
-    private var notificationPermissionRequestInProgress = false
     private var batteryDialog: AlertDialog? = null
     private val updateExecutor = Executors.newSingleThreadExecutor()
     private var availableUpdate: AndroidRelease? = null
@@ -70,12 +79,17 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.mainScroll)) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
         preferences = ProxyPreferences(this)
         bindViews()
         loadSettings()
         bindActions()
-        requestNotificationPermission()
-        handler.postDelayed(::maybeExplainBatteryOptimization, BATTERY_PROMPT_DELAY_MS)
+        findViewById<TextView>(R.id.versionText).text = getString(R.string.version_label, BuildConfig.VERSION_NAME)
+        showSettings(savedInstanceState?.getBoolean("settingsVisible") == true)
         checkForUpdates(showCurrent = false)
     }
 
@@ -102,6 +116,7 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         batteryDialog?.dismiss()
         batteryDialog = null
+        handler.removeCallbacksAndMessages(null)
         updateExecutor.shutdownNow()
         super.onDestroy()
     }
@@ -113,9 +128,33 @@ class MainActivity : Activity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
-            notificationPermissionRequestInProgress = false
-            maybeExplainBatteryOptimization()
+            refreshBatteryOptimizationStatus()
         }
+    }
+
+    private fun showSettings(visible: Boolean) {
+        if (Build.VERSION.SDK_INT >= 33 && settingsVisible != visible) {
+            if (visible) onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, settingsBackCallback!!)
+            else onBackInvokedDispatcher.unregisterOnBackInvokedCallback(settingsBackCallback!!)
+        }
+        settingsVisible = visible
+        findViewById<View>(R.id.homePanel).visibility = if (visible) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.settingsPanel).visibility = if (visible) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.settingsButton).setText(if (visible) R.string.back_home else R.string.settings_title)
+        findViewById<ScrollView>(R.id.mainScroll).smoothScrollTo(0, 0)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("settingsVisible", settingsVisible)
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK && settingsVisible) {
+            showSettings(false)
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
     }
 
     private fun bindViews() {
@@ -139,10 +178,17 @@ class MainActivity : Activity() {
     }
 
     private fun bindActions() {
+        findViewById<Button>(R.id.settingsButton).setOnClickListener { showSettings(!settingsVisible) }
+        findViewById<Button>(R.id.revealSecretButton).setOnClickListener {
+            secretVisible = !secretVisible
+            secretInput.transformationMethod = if (secretVisible) null else PasswordTransformationMethod.getInstance()
+            (it as Button).setText(if (secretVisible) R.string.hide_secret else R.string.show_secret)
+        }
         toggleButton.setOnClickListener {
             if (currentStatus.isActive) {
                 ProxyService.stop(this)
             } else if (saveSettings(false)) {
+                requestNotificationPermission()
                 if (isBatteryOptimizationDisabled()) {
                     ProxyService.start(this)
                 } else {
@@ -160,7 +206,12 @@ class MainActivity : Activity() {
             startActivity(Intent(this, LogActivity::class.java))
         }
         findViewById<Button>(R.id.generateButton).setOnClickListener {
-            secretInput.setText(preferences.generateSecret())
+            AlertDialog.Builder(this)
+                .setTitle(R.string.new_secret_title)
+                .setMessage(R.string.new_secret_message)
+                .setPositiveButton(R.string.generate_secret) { _, _ -> secretInput.setText(preferences.generateSecret()) }
+                .setNegativeButton(R.string.not_now, null)
+                .show()
         }
         findViewById<Button>(R.id.saveButton).setOnClickListener { saveSettings(true) }
         updateButton.setOnClickListener {
@@ -185,23 +236,28 @@ class MainActivity : Activity() {
     }
 
     private fun saveSettings(showConfirmation: Boolean): Boolean {
+        if (currentStatus.isActive) return false
         val port = portInput.text.toString()
         val secret = secretInput.text.toString().trim()
         val pool = poolInput.text.toString()
         if (!ProxyInputValidator.validPort(port)) {
+            showSettings(true)
             portInput.error = getString(R.string.invalid_port)
             return false
         }
         if (!ProxyInputValidator.validSecret(secret)) {
+            showSettings(true)
             secretInput.error = getString(R.string.invalid_secret)
             return false
         }
         if (!ProxyInputValidator.validPoolSize(pool)) {
+            showSettings(true)
             poolInput.error = getString(R.string.invalid_pool)
             return false
         }
         val workerDomains = workerDomainsInput.text.toString()
         if (!ProxyInputValidator.validDomains(workerDomains)) {
+            showSettings(true)
             workerDomainsInput.error = getString(R.string.invalid_worker_domains)
             return false
         }
@@ -231,6 +287,24 @@ class MainActivity : Activity() {
             "failed" -> R.string.status_failed to R.color.danger
             else -> R.string.status_stopped to R.color.muted
         }
+        val hint = when (status.state) {
+            "running" -> R.string.hint_running
+            "starting" -> R.string.hint_starting
+            "stopping" -> R.string.hint_stopping
+            "failed" -> R.string.hint_failed
+            else -> R.string.hint_stopped
+        }
+        findViewById<TextView>(R.id.statusHint).setText(hint)
+        toggleButton.isEnabled = status.state != "starting" && status.state != "stopping"
+        for (id in listOf(R.id.telegramButton, R.id.copyButton)) {
+            findViewById<Button>(id).isEnabled = status.state == "running" && !status.telegramUrl.isNullOrBlank()
+        }
+        for (view in listOf(portInput, secretInput, poolInput, cfproxySwitch, workerDomainsInput, fakeTlsInput, maskingInput,
+            findViewById<Button>(R.id.generateButton), findViewById<Button>(R.id.saveButton))) {
+            view.isEnabled = !status.isActive
+            view.alpha = if (status.isActive) 0.55f else 1f
+        }
+        findViewById<View>(R.id.settingsLocked).visibility = if (status.isActive) View.VISIBLE else View.GONE
         val resolvedColor = ContextCompat.getColor(this, color)
         statusText.setText(label)
         statusDot.setTextColor(resolvedColor)
@@ -287,24 +361,10 @@ class MainActivity : Activity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
-            notificationPermissionRequestInProgress = true
             requestPermissions(
                 arrayOf(Manifest.permission.POST_NOTIFICATIONS),
                 NOTIFICATION_PERMISSION_REQUEST_CODE,
             )
-        }
-    }
-
-    private fun maybeExplainBatteryOptimization() {
-        if (
-            !isFinishing &&
-            !notificationPermissionRequestInProgress &&
-            !preferences.batteryOptimizationPromptShown &&
-            !isBatteryOptimizationDisabled() &&
-            batteryDialog?.isShowing != true
-        ) {
-            preferences.batteryOptimizationPromptShown = true
-            showBatteryOptimizationDialog()
         }
     }
 

@@ -1,6 +1,7 @@
 use std::net::{IpAddr, UdpSocket};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::thread;
+use tokio::task::JoinSet;
 
 use anyhow::{Context, Result, anyhow};
 use arboard::Clipboard;
@@ -47,14 +48,24 @@ pub(super) fn spawn(paths: AppPaths) -> Result<WorkerHandle> {
 #[allow(clippy::too_many_lines)]
 async fn run(
     paths: AppPaths,
+    command_rx: mpsc::UnboundedReceiver<WorkerCommand>,
+    event_tx: &mpsc::UnboundedSender<WorkerEvent>,
+) -> Result<()> {
+    run_with_updates(paths, command_rx, event_tx, JoinSet::new()).await
+}
+
+#[allow(clippy::too_many_lines)]
+async fn run_with_updates(
+    paths: AppPaths,
     mut command_rx: mpsc::UnboundedReceiver<WorkerCommand>,
     event_tx: &mpsc::UnboundedSender<WorkerEvent>,
+    mut update_jobs: JoinSet<UpdateResult>,
 ) -> Result<()> {
     let mut controller = None;
     let mut status_rx = None;
     let mut current_link = None;
     let mut clipboard = None;
-    let mut latest_update = None;
+    let mut latest_update: Option<ReleaseInfo> = None;
     let mut downloaded_update = None;
 
     start_proxy(
@@ -66,7 +77,7 @@ async fn run(
     )
     .await;
     if DesktopConfig::load_or_create(&paths.config).is_ok_and(|config| config.check_updates) {
-        check_updates(event_tx, &mut latest_update).await;
+        schedule_update_check(event_tx, &mut update_jobs);
     }
 
     loop {
@@ -84,6 +95,7 @@ async fn run(
                             warn!(error = %action_error, "failed to open Telegram connection URL");
                         }
                     }
+                    #[cfg(not(windows))]
                     WorkerCommand::CopyLink => {
                         if let Err(action_error) =
                             copy_link(current_link.as_deref(), &mut clipboard)
@@ -91,6 +103,7 @@ async fn run(
                             warn!(error = %action_error, "failed to copy Telegram connection URL");
                         }
                     }
+                    #[cfg(not(windows))]
                     WorkerCommand::OpenSettings => {
                         if let Err(action_error) = open_file(&paths.config) {
                             warn!(
@@ -99,6 +112,10 @@ async fn run(
                                 "failed to open desktop settings"
                             );
                         }
+                    }
+                    WorkerCommand::Stop => {
+                        current_link = None;
+                        stop_proxy(event_tx, &mut controller, &mut status_rx).await;
                     }
                     WorkerCommand::Restart => {
                         stop_proxy(event_tx, &mut controller, &mut status_rx).await;
@@ -121,28 +138,20 @@ async fn run(
                         }
                     }
                     WorkerCommand::CheckUpdates => {
-                        check_updates(event_tx, &mut latest_update).await;
+                        schedule_update_check(event_tx, &mut update_jobs);
                     }
                     WorkerCommand::DownloadUpdate => {
-                        if let Some(release) = latest_update.as_ref() {
+                        if !update_jobs.is_empty() { continue; }
+                        if let Some(release) = latest_update.clone() {
+                            downloaded_update = None;
                             let version = release.version.to_string();
-                            let _ = event_tx.send(WorkerEvent::Update(UpdateState::Downloading {
-                                version: version.clone(),
-                            }));
-                            match update::download_update(release, &paths.directory.join("updates")).await {
-                                Ok(path) => {
-                                    downloaded_update = Some(path.clone());
-                                    let _ = event_tx.send(WorkerEvent::Update(UpdateState::Ready {
-                                        version,
-                                    }));
-                                }
-                                Err(error) => {
-                                    warn!(%error, "failed to download desktop update");
-                                    let _ = event_tx.send(WorkerEvent::Update(UpdateState::Failed));
-                                }
-                            }
+                            let _ = event_tx.send(WorkerEvent::Update(UpdateState::Downloading { version: version.clone() }));
+                            let directory = paths.directory.join("updates");
+                            update_jobs.spawn(async move {
+                                UpdateResult::Download { version, result: update::download_update(&release, &directory).await }
+                            });
                         } else {
-                            check_updates(event_tx, &mut latest_update).await;
+                            schedule_update_check(event_tx, &mut update_jobs);
                         }
                     }
                     WorkerCommand::InstallUpdate => {
@@ -169,6 +178,30 @@ async fn run(
                     }
                 }
             }
+            result = update_jobs.join_next(), if !update_jobs.is_empty() => {
+                let state = match result {
+                    Some(Ok(UpdateResult::Check(Ok(release)))) => {
+                        downloaded_update = None;
+                        let state = release.as_ref().map_or(UpdateState::Current, |release| UpdateState::Available { version: release.version.to_string() });
+                        latest_update = release;
+                        state
+                    }
+                    Some(Ok(UpdateResult::Download { version, result: Ok(path) })) => {
+                        downloaded_update = Some(path);
+                        UpdateState::Ready { version }
+                    }
+                    Some(Ok(UpdateResult::Check(Err(error)) | UpdateResult::Download { result: Err(error), .. })) => {
+                        warn!(%error, "desktop update failed");
+                        UpdateState::Failed
+                    }
+                    Some(Err(error)) => {
+                        warn!(%error, "desktop update task failed");
+                        UpdateState::Failed
+                    }
+                    None => continue,
+                };
+                let _ = event_tx.send(WorkerEvent::Update(state));
+            }
             status = next_status(&mut status_rx), if status_rx.is_some() => {
                 match status {
                     Some(status) => {
@@ -182,26 +215,23 @@ async fn run(
     }
 }
 
-async fn check_updates(
+enum UpdateResult {
+    Check(Result<Option<ReleaseInfo>>),
+    Download {
+        version: String,
+        result: Result<PathBuf>,
+    },
+}
+
+fn schedule_update_check(
     event_tx: &mpsc::UnboundedSender<WorkerEvent>,
-    latest_update: &mut Option<ReleaseInfo>,
+    jobs: &mut JoinSet<UpdateResult>,
 ) {
-    let _ = event_tx.send(WorkerEvent::Update(UpdateState::Checking));
-    match update::find_update().await {
-        Ok(Some(release)) => {
-            let version = release.version.to_string();
-            *latest_update = Some(release);
-            let _ = event_tx.send(WorkerEvent::Update(UpdateState::Available { version }));
-        }
-        Ok(None) => {
-            *latest_update = None;
-            let _ = event_tx.send(WorkerEvent::Update(UpdateState::Current));
-        }
-        Err(error) => {
-            warn!(%error, "failed to check desktop updates");
-            let _ = event_tx.send(WorkerEvent::Update(UpdateState::Failed));
-        }
+    if !jobs.is_empty() {
+        return;
     }
+    let _ = event_tx.send(WorkerEvent::Update(UpdateState::Checking));
+    jobs.spawn(async { UpdateResult::Check(update::find_update().await) });
 }
 
 async fn start_proxy(
@@ -318,6 +348,7 @@ fn open_telegram(link: Option<&str>, clipboard: &mut Option<Clipboard>) -> Resul
     }
 }
 
+#[cfg(not(windows))]
 fn copy_link(link: Option<&str>, clipboard: &mut Option<Clipboard>) -> Result<()> {
     let link = link.context("proxy URL is not available")?;
     copy_text(link, clipboard)
@@ -362,6 +393,50 @@ mod tests {
     use std::net::{Ipv4Addr, TcpListener as StdTcpListener};
 
     use super::*;
+
+    #[tokio::test]
+    async fn stop_and_exit_remain_responsive_during_a_stalled_update() {
+        let directory = tempfile::tempdir().unwrap();
+        let reservation = StdTcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let port = reservation.local_addr().unwrap().port();
+        drop(reservation);
+        let paths = AppPaths {
+            directory: directory.path().to_path_buf(),
+            config: directory.path().join("config.json"),
+            log: directory.path().join("proxy.log"),
+            lock: directory.path().join("desktop.lock"),
+        };
+        DesktopConfig {
+            port,
+            pool_size: 0,
+            cfproxy: false,
+            check_updates: false,
+            ..DesktopConfig::default()
+        }
+        .save_atomic(&paths.config)
+        .unwrap();
+        let mut jobs = JoinSet::new();
+        jobs.spawn(std::future::pending::<UpdateResult>());
+        let (commands, receiver) = mpsc::unbounded_channel();
+        let (events, mut statuses) = mpsc::unbounded_channel();
+        let task =
+            tokio::spawn(async move { run_with_updates(paths, receiver, &events, jobs).await });
+        tokio::time::timeout(std::time::Duration::from_secs(3), async {
+            while !matches!(
+                statuses.recv().await,
+                Some(WorkerEvent::Status(ProxyStatus::Running))
+            ) {}
+            commands.send(WorkerCommand::Stop).unwrap();
+            while !matches!(
+                statuses.recv().await,
+                Some(WorkerEvent::Status(ProxyStatus::Stopped))
+            ) {}
+            commands.send(WorkerCommand::Exit).unwrap();
+            task.await.unwrap().unwrap();
+        })
+        .await
+        .expect("updates must not block Stop or Exit");
+    }
 
     #[test]
     fn explicit_listener_host_is_used_in_link() {

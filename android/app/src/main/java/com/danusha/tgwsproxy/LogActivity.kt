@@ -3,6 +3,9 @@ package com.danusha.tgwsproxy
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.view.ViewGroup
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import android.widget.Button
 import android.widget.TextView
 import androidx.core.content.FileProvider
@@ -16,6 +19,16 @@ class LogActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_log)
+        val root = findViewById<ViewGroup>(android.R.id.content).getChildAt(0)
+        val left = root.paddingLeft
+        val top = root.paddingTop
+        val right = root.paddingRight
+        val bottom = root.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(left + bars.left, top + bars.top, right + bars.right, bottom + bars.bottom)
+            insets
+        }
         preferences = ProxyPreferences(this)
         logText = findViewById(R.id.logText)
         findViewById<Button>(R.id.refreshButton).setOnClickListener { refresh() }
