@@ -87,6 +87,19 @@ impl WebSocketError {
         }
     }
 
+    /// Retry Telegram fronting only for transient transport failures, never TLS
+    /// authentication failures or HTTP redirects.
+    #[must_use]
+    pub fn permits_fronting_retry(&self) -> bool {
+        match self {
+            Self::Timeout => true,
+            Self::Io(error) | Self::Protocol(TungsteniteError::Io(error)) => {
+                error.kind() == io::ErrorKind::ConnectionReset
+            }
+            _ => false,
+        }
+    }
+
     #[must_use]
     pub fn is_timeout(&self) -> bool {
         matches!(self, Self::Timeout)
@@ -276,6 +289,24 @@ fn is_telegram_fronting_route(domain: &str, sni: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fronting_retries_resets_but_not_authentication_or_redirect_errors() {
+        assert!(WebSocketError::Timeout.permits_fronting_retry());
+        assert!(WebSocketError::Io(io::ErrorKind::ConnectionReset.into()).permits_fronting_retry());
+        assert!(
+            WebSocketError::Protocol(TungsteniteError::Io(io::ErrorKind::ConnectionReset.into()))
+                .permits_fronting_retry()
+        );
+        assert!(!WebSocketError::Io(io::ErrorKind::InvalidData.into()).permits_fronting_retry());
+        assert!(
+            !WebSocketError::Handshake {
+                status: StatusCode::FOUND,
+                location: None
+            }
+            .permits_fronting_retry()
+        );
+    }
 
     #[test]
     fn worker_compatibility_can_omit_binary_subprotocol() {

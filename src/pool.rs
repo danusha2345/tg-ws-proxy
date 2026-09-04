@@ -18,7 +18,7 @@ use crate::websocket::{RawWebSocket, WebSocketError};
 
 const MAX_AGE: Duration = Duration::from_secs(120);
 const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(5);
-const REFILL_BACKOFF_INITIAL: Duration = Duration::from_secs(60);
+const REFILL_BACKOFF_INITIAL: Duration = Duration::from_secs(1);
 const REFILL_BACKOFF_MAX: Duration = Duration::from_secs(3600);
 const IDLE_PROBE_TIMEOUT: Duration = Duration::from_millis(1);
 const IDLE_CLOSE_TIMEOUT: Duration = Duration::from_secs(2);
@@ -419,7 +419,7 @@ impl WsPool {
             let failures = backoffs
                 .get(&key)
                 .map_or(1, |state| state.failures.saturating_add(1));
-            let exponent = failures.saturating_sub(1).min(6);
+            let exponent = failures.saturating_sub(1).min(12);
             let delay_seconds = REFILL_BACKOFF_INITIAL
                 .as_secs()
                 .saturating_mul(1_u64 << exponent)
@@ -510,7 +510,7 @@ impl WsPool {
                     return Some((websocket, None));
                 }
                 Err(error) if error.is_redirect() => {}
-                Err(WebSocketError::Timeout) if !prefer_fronting => {
+                Err(error) if !prefer_fronting && error.permits_fronting_retry() => {
                     if let Some(websocket) = self.connect_fronted(key, host, domain).await {
                         return Some((websocket, None));
                     }

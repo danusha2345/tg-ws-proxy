@@ -10,7 +10,7 @@ venv/
 .venv/
 
 # Rust
-/target/
+/target
 
 # Local scratch/state
 /.scratch/
