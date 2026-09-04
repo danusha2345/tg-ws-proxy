@@ -2,10 +2,11 @@
 
 [![Boosty](https://img.shields.io/badge/Boosty-Поддержать-FF7143?style=for-the-badge&logo=boosty&logoColor=white)](https://boosty.to/danusha/donate)
 
-### Сказать спасибо автору
+### Поддержать разработку форка
 
-- USDT (TRC20): `TKW1yLVa8F1A25vfuPaYoa891oLh1aLN7S`
-- GRAM (TON): `UQCYT0YE53DU3Zp957ouuwRn-lF8STtbwuRzjn6CMJcXiP0R`
+- [Boosty](https://boosty.to/danusha/donate)
+- USDT (TRON / TRC20): `THyBqiMTWQ7kUH6vVBEdboL7yGLj5mCSrX`
+- GRAM (TON): `UQDOgjGljFVJiHo_c9JLuX4hF2UQ2SXqSXhj3-1RefFMA4tB`
 
 Локальный MTProto-прокси для Telegram Desktop. Он перенаправляет трафик через
 TLS WebSocket и автоматически использует доступный резервный маршрут, не
@@ -13,7 +14,7 @@ TLS WebSocket и автоматически использует доступн�
 
 > [!WARNING]
 >
-> Tray проверен на Windows 11. Сборки macOS, Linux и Windows ARM64 проходят CI,
+> Старый tray проверялся на Windows 11. Новое окно требует отдельной проверки на реальном Windows. Сборки macOS, Linux и Windows ARM64 проходят CI,
 > но ещё нуждаются в расширенном пользовательском тестировании на реальном
 > железе, включая direct WebSocket, Worker/CfProxy, TCP fallback и Fake TLS.
 > [Сообщайте о найденных проблемах в Issues](https://github.com/danusha2345/tg-ws-proxy/issues).
@@ -27,7 +28,7 @@ TLS WebSocket и автоматически использует доступн�
 - пулы direct и Cloudflare Worker соединений, лимиты клиентов и размера
   WebSocket-сообщений;
 - постоянный secret, ротация логов и Docker-образ без root;
-- опциональный нативный tray для Windows 10+, актуальных macOS и Linux;
+- окно управления и редактор настроек для Windows 10+, tray для macOS и Linux;
 - встроенная загрузка стабильных обновлений с GitHub Releases с проверкой
   SHA-256.
 
@@ -73,7 +74,7 @@ Desktop или добавьте MTProto-прокси вручную:
 Secret сохраняется в указанном файле и повторно используется при следующих
 запусках. Не публикуйте его и не добавляйте в Git.
 
-### Нативный tray
+### Окно Windows и системный трей
 
 ```bash
 cargo run --release --locked \
@@ -81,10 +82,11 @@ cargo run --release --locked \
   --bin tg-ws-proxy-desktop
 ```
 
-Tray использует тот же Rust runtime. Пункт обновления проверяет стабильные
+Windows открывает окно управления с формой настроек; закрытие окна оставляет
+прокси в трее. Linux и macOS сохраняют прежний tray. Используется тот же Rust runtime. Пункт обновления проверяет стабильные
 `rust-v*` релизы, скачивает сборку для текущей ОС и сверяет её с
-`SHA256SUMS.txt`. Полный GUI-редактор, Windows autostart и portable mode пока
-остаются возможностями legacy Python-версии.
+`SHA256SUMS.txt`. Windows autostart и portable mode пока остаются возможностями legacy
+Python-версии. [Описание нового интерфейса](./RUST_PORT.md).
 
 ### Docker
 
