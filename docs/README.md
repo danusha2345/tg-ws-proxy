@@ -1,4 +1,23 @@
+# TG WS Proxy — форк с приложениями Windows и Android
+
+Готовые версии нашего форка:
+[Windows / Rust](https://github.com/danusha2345/tg-ws-proxy/releases/tag/rust-v1.11.0)
+и [Android](https://github.com/danusha2345/tg-ws-proxy/releases/tag/android-v0.2.0).
+Исходники находятся в ветках
+[rust-port](https://github.com/danusha2345/tg-ws-proxy/tree/rust-port)
+и [android-port](https://github.com/danusha2345/tg-ws-proxy/tree/android-port).
+Ветка main сохраняет Python-реализацию оригинального проекта.
+
+### Поддержать разработку форка
+
+- [Boosty](https://boosty.to/danusha/donate)
+- USDT (TRON / TRC20): `THyBqiMTWQ7kUH6vVBEdboL7yGLj5mCSrX`
+- GRAM (TON): `UQDOgjGljFVJiHo_c9JLuX4hF2UQ2SXqSXhj3-1RefFMA4tB`
+
 <div align="center">
+
+
+
 	<br />
 	<p>
 		<img width="1729" height="910" alt="tgwsproxy" src="./images/workflow.png" />
@@ -9,7 +28,7 @@
 
 > [!TIP]
 >
-> ### [🎉 Поддержать меня](./Funding.md)
+> ### [🎉 Поддержать автора оригинального проекта Flowseal](./Funding.md)
 >
 > **USDT (TRC20)**: `TXPnKs2Ww1RD8JN6nChFUVmi5r2hqrWjuu`  
 > **BTC**: `bc1qr8vd6jelkyyry3m4mq6z5txdx4pl856fu6ss0w`  
