@@ -1,6 +1,6 @@
 [package]
 name = "tg-ws-proxy"
-version = "1.11.0"
+version = "1.11.1"
 edition = "2024"
 rust-version = "1.85"
 description = "Telegram Desktop WebSocket bridge proxy"
@@ -49,6 +49,8 @@ desktop = [
     "dep:serde_json",
     "dep:tray-icon",
     "dep:winit",
+    "dep:raw-window-handle",
+    "dep:windows-sys",
 ]
 
 [dependencies]
@@ -92,6 +94,8 @@ tray-icon = { version = "0.24.2", default-features = false, optional = true }
 winit = { version = "0.30.12", default-features = false, optional = true }
 
 [target.'cfg(windows)'.dependencies]
+raw-window-handle = { version = "0.6.2", optional = true }
+windows-sys = { version = "0.61.2", features = ["Win32_UI_WindowsAndMessaging"], optional = true }
 native-dialog = { version = "0.9.7", features = ["windows_dpi_awareness", "windows_visual_styles"], optional = true }
 
 [target.'cfg(windows)'.build-dependencies]
@@ -106,7 +110,7 @@ codegen-units = 1
 strip = true
 
 [lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }

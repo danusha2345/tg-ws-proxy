@@ -104,6 +104,9 @@ jobs:
       - name: Build CLI and tray
         run: cargo build --release --locked --features desktop --bins
 
+      - name: Test native window restoration
+        run: cargo test --locked --features desktop --lib windows_restore::tests
+
       - name: Smoke-test CLI
         shell: pwsh
         run: .\target\release\tg-ws-proxy.exe --help
@@ -379,17 +382,11 @@ jobs:
 
           ## Что нового
 
-          - новое Windows-окно: подключение, форма настроек, светлая/тёмная тема,
-            скрытый ключ, готовность listener и управление через трей;
-          - настройки можно редактировать после остановки прокси;
-          - проверка и скачивание обновлений больше не блокируют Stop и Exit;
-          - исправлены обход готового пула при IP cooldown и fronting после TCP reset;
-          - восстановление пустого пула начинается с короткого backoff;
-          - сохранена совместимость legacy-конфигурации и её неизвестных полей.
+          Исправлено восстановление Windows-окна из трея после скрытия и
+          минимизации. Работа прокси и сохранённые настройки не изменены.
 
-          Сборки проходят CI. Общий GUI проверен визуально на Linux renderer;
-          Telegram и sleep/resume на реальном Windows после редизайна требуют
-          отдельной проверки.
+          Восстановление проверяется нативным Windows-тестом в CI; полная
+          проверка интерфейса на реальном ПК остаётся отдельным этапом.
 
           ## Сборки
 
