@@ -9,6 +9,8 @@ mod unsupported;
 mod update;
 #[cfg(any(windows, target_os = "linux"))]
 mod window;
+#[cfg(windows)]
+mod windows_restore;
 mod worker;
 
 use std::io;

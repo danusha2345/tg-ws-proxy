@@ -4310,7 +4310,7 @@ dependencies = [
 
 [[package]]
 name = "tg-ws-proxy"
-version = "1.11.0"
+version = "1.11.1"
 dependencies = [
  "aes",
  "anyhow",
@@ -4329,6 +4329,7 @@ dependencies = [
  "native-dialog",
  "open",
  "proptest",
+ "raw-window-handle 0.6.2",
  "reqwest",
  "rustls",
  "semver",
@@ -4347,6 +4348,7 @@ dependencies = [
  "tray-icon",
  "url",
  "webpki-roots",
+ "windows-sys 0.61.2",
  "winit 0.30.13",
  "winresource",
 ]

@@ -315,11 +315,13 @@ impl eframe::App for ControlWindow {
                 match event.as_str() {
                     "show" => {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
                         ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                     }
                     "settings" => {
                         self.settings = true;
                         ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
                         ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                     }
                     "restart" => self.send(WorkerCommand::Restart),
@@ -377,18 +379,23 @@ impl eframe::App for ControlWindow {
 #[cfg(windows)]
 fn create_tray(
     language: Language,
-    ctx: &egui::Context,
+    context: &eframe::CreationContext<'_>,
     events: std::sync::mpsc::Sender<String>,
 ) -> Result<tray_icon::TrayIcon> {
     use tray_icon::menu::{Menu, MenuItem};
 
-    // Restore through an event callback: hidden windows do not reliably redraw,
-    // so polling the tray from App::update alone can strand the application.
+    let window = super::windows_restore::WindowRestore::new(context)?;
+    let ctx = &context.egui_ctx;
+    // Wake the native window before asking egui to repaint: eframe skips
+    // repaint requests while minimized and cannot consume viewport commands.
     let wake = ctx.clone();
     let menu_events = events.clone();
     tray_icon::menu::MenuEvent::set_event_handler(Some(
         move |event: tray_icon::menu::MenuEvent| {
-            let _ = menu_events.send(event.id.0);
+            if menu_events.send(event.id.0).is_err() {
+                return; // The app and its native window have been dropped.
+            }
+            window.restore();
             wake.send_viewport_cmd(egui::ViewportCommand::Visible(true));
             wake.send_viewport_cmd(egui::ViewportCommand::Focus);
             wake.request_repaint();
@@ -397,7 +404,10 @@ fn create_tray(
     let wake = ctx.clone();
     tray_icon::TrayIconEvent::set_event_handler(Some(move |event| {
         if matches!(event, tray_icon::TrayIconEvent::DoubleClick { .. }) {
-            let _ = events.send("show".into());
+            if events.send("show".into()).is_err() {
+                return;
+            }
+            window.restore();
             wake.send_viewport_cmd(egui::ViewportCommand::Visible(true));
             wake.send_viewport_cmd(egui::ViewportCommand::Focus);
             wake.request_repaint();
@@ -503,7 +513,7 @@ pub(super) fn run(
             #[cfg(windows)]
             let app = {
                 let mut app = app;
-                match create_tray(language, &context.egui_ctx, tray_sender) {
+                match create_tray(language, context, tray_sender) {
                     Ok(tray) => app.tray = Some(tray),
                     Err(error) => app.notice = Some(format!("Tray: {error}")),
                 }
