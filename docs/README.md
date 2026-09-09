@@ -4,13 +4,13 @@
 
 Если GitHub недоступен, используйте публичное зеркало с файлами на GitLab:
 
-- [Windows, Linux и macOS — Rust 1.11.1](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/rust-v1.11.1)
-- [Android 0.2.0 — подписанные APK](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/android-v0.2.0)
+- [Windows, Linux и macOS — Rust 1.11.2](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/rust-v1.11.2)
+- [Android 0.2.1 — подписанные APK](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/android-v0.2.1)
 - [Исходники и ветки](https://gitlab.com/pipecpriam/tg-ws-proxy)
 
 Контрольные суммы находятся в файлах `SHA256SUMS.txt` и
 `SHA256SUMS-android.txt` внутри соответствующего релиза. Встроенный updater
-версий 1.11.1 / 0.2.0 пока обращается к GitHub; зеркало используется для
+версий 1.11.2 / 0.2.1 пока обращается к GitHub; зеркало используется для
 ручного скачивания.
 
 
@@ -22,15 +22,16 @@
 - USDT (TRON / TRC20): `THyBqiMTWQ7kUH6vVBEdboL7yGLj5mCSrX`
 - GRAM (TON): `UQDOgjGljFVJiHo_c9JLuX4hF2UQ2SXqSXhj3-1RefFMA4tB`
 
-Локальный MTProto-прокси для Telegram Desktop. Он перенаправляет трафик через
-TLS WebSocket и автоматически использует доступный резервный маршрут, не
-требуя отдельного пользовательского сервера для базового режима.
+Локальный MTProto-прокси для Telegram Desktop и Android. Он перенаправляет
+трафик через TLS WebSocket и автоматически использует доступный резервный
+маршрут, не требуя отдельного пользовательского сервера для базового режима.
 
 > [!WARNING]
 >
 > Старый tray проверялся на Windows 11. Новое окно требует отдельной проверки на реальном Windows. Сборки macOS, Linux и Windows ARM64 проходят CI,
-> но ещё нуждаются в расширенном пользовательском тестировании на реальном
-> железе, включая direct WebSocket, Worker/CfProxy, TCP fallback и Fake TLS.
+> а Android — CI и emulator smoke-тест. Все эти targets ещё нуждаются в
+> расширенном пользовательском тестировании на реальном железе, включая direct
+> WebSocket, Worker/CfProxy, TCP fallback, Fake TLS и foreground service.
 > [Сообщайте о найденных проблемах в Issues](https://github.com/danusha2345/tg-ws-proxy/issues).
 
 ## Что уже реализовано
@@ -43,6 +44,7 @@ TLS WebSocket и автоматически использует доступн�
   WebSocket-сообщений;
 - постоянный secret, ротация логов и Docker-образ без root;
 - окно управления и редактор настроек для Windows 10+, tray для macOS и Linux;
+- Android-приложение с foreground service, настройками и просмотром логов;
 - встроенная загрузка стабильных обновлений с GitHub Releases с проверкой
   SHA-256.
 
@@ -61,6 +63,8 @@ TLS WebSocket и автоматически использует доступн�
 | macOS 11+ Intel / Apple Silicon | `TgWsProxy_macos_universal.dmg` |
 | Linux x86_64 | `TgWsProxy_linux_amd64`, `.deb` или `.rpm` |
 | Linux ARM64 | `TgWsProxy_linux_arm64`, `.deb` или `.rpm` |
+| Android ARM64 | `TgWsProxy_android_arm64-v8a.apk` |
+| Android universal | `TgWsProxy_android_universal.apk` |
 
 В архивах также есть отдельный CLI. Windows-бинарники пока не подписаны, а
 macOS-приложение не notarized. Rust-сборки для Windows 7 не выпускаются:
@@ -102,6 +106,16 @@ Windows открывает окно управления с формой нас�
 `SHA256SUMS.txt`. Windows autostart и portable mode пока остаются возможностями legacy
 Python-версии. [Описание нового интерфейса](./RUST_PORT.md).
 
+### Android
+
+Android-приложение собирает Rust-ядро через JNI и запускает локальный listener
+в foreground service. При первом запуске оно предлагает исключить TG WS Proxy
+из оптимизации батареи и показывает предупреждение, пока ограничение не снято.
+Встроенный updater скачивает только стабильные `android-v*` APK и проверяет
+их по `SHA256SUMS-android.txt` перед вызовом системного установщика.
+Инструкция по установке, сборке и тестированию:
+[TG WS Proxy для Android](./README.android.md).
+
 ### Docker
 
 ```bash
@@ -119,13 +133,14 @@ docker run -d \
 
 ## Нужны тестеры
 
-Особенно полезны проверки на Windows, macOS и разных окружениях Linux:
+Особенно полезны проверки на Windows, macOS, разных окружениях Linux и Android:
 
 1. запуск CLI и tray;
 2. подключение Telegram по напечатанной ссылке;
 3. сообщения, фото, видео и большие файлы;
 4. direct WebSocket, Worker/CfProxy и TCP fallback;
-5. Fake TLS, sleep/resume и длительная работа.
+5. Fake TLS, sleep/resume и длительная работа;
+6. Android: выключенный экран, смена Wi-Fi/мобильной сети и энергосбережение.
 
 В отчёте укажите ОС, способ запуска, проверенный маршрут и приложите логи без
 secret. Баги и результаты тестов принимаются в
@@ -155,6 +170,7 @@ Telegram Desktop → MTProto Proxy (127.0.0.1:1443) → TLS WebSocket → Telegr
 - [Fake TLS + upstream в Nginx](./FakeTlsNginx.md)
 - [Тестовые DC Telegram](./TestDc.md)
 - [Файлы конфигурации tray](./TrayConfig.md)
+- [Android](./README.android.md)
 - [Руководство для контрибьюторов](./CONTRIBUTING.md)
 
 ### Инструкции по ОС
@@ -162,6 +178,7 @@ Telegram Desktop → MTProto Proxy (127.0.0.1:1443) → TLS WebSocket → Telegr
 - [Windows](./README.windows.md)
 - [macOS](./README.macos.md)
 - [Linux](./README.linux.md)
+- [Android](./README.android.md)
 
 ## Происхождение
 

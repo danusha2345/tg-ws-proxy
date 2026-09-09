@@ -24,7 +24,10 @@ impl WindowRestore {
 
     #[allow(unsafe_code)]
     pub(super) fn restore(self) {
-        assert_eq!(self.thread, std::thread::current().id());
+        if self.thread != std::thread::current().id() {
+            tracing::warn!("tray callback arrived off the UI thread; skipping window restore");
+            return;
+        }
         let hwnd = self.hwnd.get() as *mut std::ffi::c_void;
         // SAFETY: the handle comes from eframe's live root window. Tray callbacks
         // run on its UI thread and call this only after successfully sending to
