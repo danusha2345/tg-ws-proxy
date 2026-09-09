@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use anyhow::{Context, Result};
+use tracing::Metadata;
 use tracing_subscriber::fmt::MakeWriter;
 
 const MIN_LOG_SIZE: u64 = 32 * 1024;
@@ -92,6 +93,124 @@ impl Write for RotatingWriter {
             .ok_or_else(|| io::Error::other("log file is not open"))?
             .flush()
     }
+}
+
+/// Wraps another `MakeWriter` and masks third-party domain names in every
+/// log line, mirroring upstream's `DomainCensorFilter`: all labels except the
+/// TLD keep their first half and the rest is replaced with `*`. `telegram.org`
+/// and `.log` file names stay untouched.
+#[derive(Clone)]
+pub struct CensoringMakeWriter<M> {
+    inner: M,
+}
+
+impl<M> CensoringMakeWriter<M> {
+    pub const fn new(inner: M) -> Self {
+        Self { inner }
+    }
+}
+
+impl<'a, M: MakeWriter<'a>> MakeWriter<'a> for CensoringMakeWriter<M> {
+    type Writer = CensoringWriter<M::Writer>;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        CensoringWriter {
+            inner: self.inner.make_writer(),
+        }
+    }
+
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        CensoringWriter {
+            inner: self.inner.make_writer_for(meta),
+        }
+    }
+}
+
+pub struct CensoringWriter<W> {
+    inner: W,
+}
+
+impl<W: Write> Write for CensoringWriter<W> {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        let censored = censor_domains(&String::from_utf8_lossy(buffer));
+        self.inner.write_all(censored.as_bytes())?;
+        Ok(buffer.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+}
+
+#[must_use]
+pub fn censor_domains(text: &str) -> String {
+    let mut output = String::with_capacity(text.len());
+    let mut run = String::new();
+    for character in text.chars() {
+        if character.is_alphanumeric() || matches!(character, '-' | '.' | '_') {
+            run.push(character);
+        } else {
+            flush_run(&mut output, &run);
+            run.clear();
+            output.push(character);
+        }
+    }
+    flush_run(&mut output, &run);
+    output
+}
+
+fn flush_run(output: &mut String, run: &str) {
+    let core = run.trim_matches('.');
+    let leading = &run[..run.len() - run.trim_start_matches('.').len()];
+    let trailing = &run[leading.len() + core.len()..];
+    output.push_str(leading);
+    if is_censorable_domain(core) {
+        let labels: Vec<&str> = core.split('.').collect();
+        for (index, label) in labels.iter().enumerate() {
+            if index > 0 {
+                output.push('.');
+            }
+            if index + 1 == labels.len() {
+                output.push_str(label);
+            } else {
+                let keep = label.len() / 2;
+                output.push_str(&label[..keep]);
+                output.extend(std::iter::repeat_n('*', label.len() - keep));
+            }
+        }
+    } else {
+        output.push_str(core);
+    }
+    output.push_str(trailing);
+}
+
+// `normalized` is already lowercase, so the suffix check is case-insensitive.
+#[allow(clippy::case_sensitive_file_extension_comparisons)]
+fn is_censorable_domain(candidate: &str) -> bool {
+    let labels: Vec<&str> = candidate.split('.').collect();
+    if labels.len() < 2 {
+        return false;
+    }
+    let valid_label = |label: &str| {
+        !label.is_empty()
+            && label.len() <= 63
+            && !label.starts_with('-')
+            && !label.ends_with('-')
+            && label
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+    };
+    if !labels.iter().all(|label| valid_label(label)) {
+        return false;
+    }
+    let tld = labels[labels.len() - 1];
+    if tld.len() < 2 || !tld.bytes().all(|byte| byte.is_ascii_alphabetic()) {
+        return false;
+    }
+    let normalized = candidate.to_ascii_lowercase();
+    !(normalized == "telegram.org"
+        || normalized.ends_with(".telegram.org")
+        || normalized.ends_with(".log"))
 }
 
 fn rotate(state: &mut RotationState) -> io::Result<()> {
@@ -190,6 +309,38 @@ mod tests {
             fs::metadata(path).unwrap().permissions().mode() & 0o777,
             0o600
         );
+    }
+
+    #[test]
+    fn censors_third_party_domains_but_keeps_telegram_ips_and_logs() {
+        assert_eq!(
+            censor_domains("WS cdn.example.com -> 149.154.167.51 ok"),
+            "WS c**.exa****.com -> 149.154.167.51 ok"
+        );
+        assert_eq!(
+            censor_domains("fronting via web.telegram.org, log proxy.log, v1.11.0."),
+            "fronting via web.telegram.org, log proxy.log, v1.11.0."
+        );
+        assert_eq!(
+            censor_domains("worker a.b.example.dev."),
+            "worker *.*.exa****.dev."
+        );
+        assert_eq!(
+            censor_domains("host_name.com -bad.com"),
+            "host_name.com -bad.com"
+        );
+        assert_eq!(censor_domains("домен example.org"), "домен exa****.org");
+    }
+
+    #[test]
+    fn censoring_writer_rewrites_each_line() {
+        let mut sink = Vec::new();
+        {
+            let mut writer = CensoringWriter { inner: &mut sink };
+            writer.write_all(b"DC2 via worker.example.net\n").unwrap();
+            writer.flush().unwrap();
+        }
+        assert_eq!(sink, b"DC2 via wor***.exa****.net\n");
     }
 
     #[test]

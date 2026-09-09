@@ -8,7 +8,7 @@ use tg_ws_proxy::Proxy;
 use tg_ws_proxy::config::{
     ProxyConfig, load_or_create_secret, normalize_domains, parse_dc_ip, parse_secret,
 };
-use tg_ws_proxy::logging::RotatingMakeWriter;
+use tg_ws_proxy::logging::{CensoringMakeWriter, RotatingMakeWriter};
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::writer::{BoxMakeWriter, MakeWriterExt};
@@ -237,9 +237,9 @@ fn init_logging(args: &Args) -> Result<()> {
         let max_bytes = log_max_bytes(args.log_max_mb)?;
         let file = RotatingMakeWriter::new(path, max_bytes, args.log_backups)
             .with_context(|| format!("failed to configure log file {}", path.display()))?;
-        BoxMakeWriter::new(std::io::stderr.and(file))
+        BoxMakeWriter::new(CensoringMakeWriter::new(std::io::stderr.and(file)))
     } else {
-        BoxMakeWriter::new(std::io::stderr)
+        BoxMakeWriter::new(CensoringMakeWriter::new(std::io::stderr))
     };
     tracing_subscriber::fmt()
         .with_env_filter(filter)
