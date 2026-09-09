@@ -252,4 +252,11 @@ mod tests {
         assert!(version > Version::parse("1.9.0-alpha.2").unwrap());
         assert!("android-v0.1.0".strip_prefix(TAG_PREFIX).is_none());
     }
+
+    #[tokio::test]
+    #[ignore = "requires live GitHub access"]
+    async fn live_github_release_lookup_uses_ring_tls() {
+        let release = find_update().await.unwrap();
+        assert!(release.is_none_or(|release| release.version.major >= 1));
+    }
 }
