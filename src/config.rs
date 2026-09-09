@@ -387,7 +387,8 @@ pub(crate) fn fronting_tls_config() -> Result<Arc<ClientConfig>> {
     ))
 }
 
-fn install_crypto_provider() {
+/// Installs the ring crypto provider as the process default; safe to call repeatedly.
+pub fn install_crypto_provider() {
     static PROVIDER: OnceLock<()> = OnceLock::new();
     PROVIDER.get_or_init(|| {
         let _ = rustls::crypto::ring::default_provider().install_default();

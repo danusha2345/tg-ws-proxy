@@ -292,10 +292,7 @@ fn restrict_config_permissions(path: &Path) -> Result<()> {
 
 fn default_language() -> String {
     for key in ["LC_ALL", "LC_MESSAGES", "LANG"] {
-        if std::env::var(key)
-            .ok()
-            .is_some_and(|value| value.to_ascii_lowercase().starts_with("ru"))
-        {
+        if std::env::var(key).is_ok_and(|value| value.to_ascii_lowercase().starts_with("ru")) {
             return "ru".to_owned();
         }
     }
