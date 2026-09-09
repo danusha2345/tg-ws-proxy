@@ -22,7 +22,7 @@ use tracing_subscriber::fmt::writer::{BoxMakeWriter, MakeWriterExt};
 
 use crate::desktop_config::DesktopConfig;
 use crate::desktop_controller::ProxyStatus;
-use crate::logging::RotatingMakeWriter;
+use crate::logging::{CensoringMakeWriter, RotatingMakeWriter};
 use crate::single_instance::SingleInstance;
 
 pub use paths::AppPaths;
@@ -250,7 +250,9 @@ fn init_logging(paths: &AppPaths, config: &DesktopConfig) -> Result<()> {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(filter));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
-        .with_writer(BoxMakeWriter::new(io::stderr.and(file)))
+        .with_writer(BoxMakeWriter::new(CensoringMakeWriter::new(
+            io::stderr.and(file),
+        )))
         .with_target(false)
         .try_init()
         .map_err(|error| anyhow::anyhow!("failed to initialize desktop logging: {error}"))

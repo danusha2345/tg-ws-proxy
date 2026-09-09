@@ -9,7 +9,7 @@ use jni::objects::{JClass, JString};
 use jni::sys::jstring;
 use serde::{Deserialize, Serialize};
 use tg_ws_proxy::config::{ProxyConfig, normalize_domains, parse_secret};
-use tg_ws_proxy::logging::RotatingMakeWriter;
+use tg_ws_proxy::logging::{CensoringMakeWriter, RotatingMakeWriter};
 use tg_ws_proxy::{Proxy, stats::StatsSnapshot};
 use tokio::sync::oneshot;
 use tracing::info;
@@ -138,7 +138,7 @@ fn init_logging(path: &PathBuf) -> Result<()> {
     let subscriber = tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::new("info"))
         .with_ansi(false)
-        .with_writer(writer)
+        .with_writer(CensoringMakeWriter::new(writer))
         .finish();
     if tracing::subscriber::set_global_default(subscriber).is_ok() {
         let _ = LOGGING.set(());
