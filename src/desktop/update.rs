@@ -195,6 +195,9 @@ fn linux_asset_names(arch: &str) -> Vec<&'static str> {
 }
 
 fn client() -> reqwest::Client {
+    // reqwest is built with `rustls-no-provider`; the ring provider must be the
+    // process default before the first TLS handshake.
+    crate::config::install_crypto_provider();
     reqwest::Client::builder()
         .user_agent(concat!("tg-ws-proxy/", env!("CARGO_PKG_VERSION")))
         .https_only(true)
