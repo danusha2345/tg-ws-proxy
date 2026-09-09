@@ -129,6 +129,6 @@ tasks.matching {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.core:core-ktx:1.18.0")
     testImplementation("junit:junit:4.13.2")
 }
