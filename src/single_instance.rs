@@ -15,15 +15,15 @@ pub struct SingleInstance {
 impl SingleInstance {
     pub fn acquire(path: impl Into<PathBuf>) -> Result<Self> {
         let path = path.into();
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                fs::create_dir_all(parent).with_context(|| {
-                    format!(
-                        "failed to create single-instance directory {}",
-                        parent.display()
-                    )
-                })?;
-            }
+        if let Some(parent) = path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            fs::create_dir_all(parent).with_context(|| {
+                format!(
+                    "failed to create single-instance directory {}",
+                    parent.display()
+                )
+            })?;
         }
 
         let mut options = OpenOptions::new();

@@ -2,7 +2,7 @@
 name = "tg-ws-proxy"
 version = "1.11.2"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.89"
 description = "Telegram Desktop WebSocket bridge proxy"
 license = "MIT"
 repository = "https://github.com/danusha2345/tg-ws-proxy"

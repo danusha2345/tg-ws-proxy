@@ -14,7 +14,7 @@ pub struct IconBitmap {
 impl IconBitmap {
     #[cfg(target_os = "linux")]
     pub fn into_argb(mut self) -> Vec<u8> {
-        for pixel in self.rgba.chunks_exact_mut(4) {
+        for pixel in self.rgba.as_chunks_mut::<4>().0 {
             pixel.rotate_right(1);
         }
         self.rgba

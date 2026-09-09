@@ -354,10 +354,10 @@ impl WsPool {
         if self.capacity(key) == 0 || self.is_shutting_down() {
             return;
         }
-        if let Some(backoff) = self.inner.backoff.lock().await.get(&key) {
-            if Instant::now() < backoff.retry_after {
-                return;
-            }
+        if let Some(backoff) = self.inner.backoff.lock().await.get(&key)
+            && Instant::now() < backoff.retry_after
+        {
+            return;
         }
         {
             let mut refilling = self
@@ -498,10 +498,10 @@ impl WsPool {
     ) -> Option<(RawWebSocket, Option<String>)> {
         let prefer_fronting = self.prefers_fronting(key);
         for domain in domains {
-            if prefer_fronting {
-                if let Some(websocket) = self.connect_fronted(key, host, domain).await {
-                    return Some((websocket, None));
-                }
+            if prefer_fronting
+                && let Some(websocket) = self.connect_fronted(key, host, domain).await
+            {
+                return Some((websocket, None));
             }
 
             match self.connect(host, domain, None, "/apiws", true).await {
@@ -667,10 +667,10 @@ impl WsPool {
         };
         tasks.abort_all();
         while let Some(result) = tasks.join_next().await {
-            if let Err(error) = result {
-                if !error.is_cancelled() {
-                    debug!(%error, "WebSocket pool task failed during shutdown");
-                }
+            if let Err(error) = result
+                && !error.is_cancelled()
+            {
+                debug!(%error, "WebSocket pool task failed during shutdown");
             }
         }
 
@@ -712,10 +712,10 @@ impl WsPool {
 
 fn reap_finished_tasks(tasks: &mut JoinSet<()>) {
     while let Some(result) = tasks.try_join_next() {
-        if let Err(error) = result {
-            if !error.is_cancelled() {
-                debug!(%error, "WebSocket pool task failed");
-            }
+        if let Err(error) = result
+            && !error.is_cancelled()
+        {
+            debug!(%error, "WebSocket pool task failed");
         }
     }
 }
