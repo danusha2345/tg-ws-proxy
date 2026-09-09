@@ -1,6 +1,6 @@
-const NAVY: [u8; 4] = [8, 21, 33, 255];
-const CYAN: [u8; 4] = [79, 214, 255, 255];
-const MINT: [u8; 4] = [92, 225, 163, 255];
+const INDIGO: [u8; 4] = [26, 21, 64, 255];
+const LAVENDER: [u8; 4] = [139, 124, 255, 255];
+const AMBER: [u8; 4] = [255, 179, 71, 255];
 const OFF_WHITE: [u8; 4] = [242, 250, 255, 255];
 const SUPERSAMPLING: u32 = 4;
 
@@ -21,7 +21,7 @@ impl IconBitmap {
     }
 }
 
-/// Renders the project mark: two opposing relay paths around a data spark.
+/// Renders the project mark: a relay arrow leaving its node through a portal ring.
 #[must_use]
 pub fn render(size: u32) -> IconBitmap {
     let mut rgba = vec![0_u8; (size * size * 4) as usize];
@@ -60,46 +60,30 @@ fn sample(x: f64, y: f64) -> [u8; 4] {
         return [0, 0, 0, 0];
     }
 
-    let upper_ring = on_ring(x, y, 0.50, 0.50, 0.30, 0.105) && y <= 0.50;
-    let lower_ring = on_ring(x, y, 0.50, 0.50, 0.30, 0.105) && y >= 0.50;
-    let cyan_arrow = point_in_polygon(
+    let node = distance_squared(x, y, 0.16, 0.50) <= 0.07_f64.powi(2);
+    let arrow = point_in_polygon(
         x,
         y,
         &[
-            (0.65, 0.27),
-            (0.87, 0.27),
-            (0.87, 0.20),
-            (0.96, 0.35),
-            (0.87, 0.50),
-            (0.87, 0.43),
-            (0.65, 0.43),
+            (0.22, 0.44),
+            (0.62, 0.44),
+            (0.62, 0.30),
+            (0.88, 0.50),
+            (0.62, 0.70),
+            (0.62, 0.56),
+            (0.22, 0.56),
         ],
     );
-    let mint_arrow = point_in_polygon(
-        x,
-        y,
-        &[
-            (0.35, 0.57),
-            (0.13, 0.57),
-            (0.13, 0.50),
-            (0.04, 0.65),
-            (0.13, 0.80),
-            (0.13, 0.73),
-            (0.35, 0.73),
-        ],
-    );
-    let cyan_node = on_ring(x, y, 0.22, 0.44, 0.065, 0.035);
-    let mint_node = on_ring(x, y, 0.78, 0.56, 0.065, 0.035);
-    let spark = (x - 0.5).abs() + (y - 0.5).abs() <= 0.09;
+    let portal = on_ring(x, y, 0.50, 0.50, 0.30, 0.06);
 
-    if spark {
+    if node {
         OFF_WHITE
-    } else if cyan_arrow || cyan_node || upper_ring {
-        CYAN
-    } else if mint_arrow || mint_node || lower_ring {
-        MINT
+    } else if arrow {
+        AMBER
+    } else if portal {
+        LAVENDER
     } else {
-        NAVY
+        INDIGO
     }
 }
 
@@ -146,7 +130,7 @@ mod tests {
 
         let center = ((16 * 32 + 16) * 4) as usize;
         assert_eq!(icon.rgba[center + 3], 255);
-        assert!(icon.rgba[center] >= OFF_WHITE[0] - 8);
+        assert!(icon.rgba[center] >= AMBER[0] - 8);
     }
 
     #[cfg(target_os = "linux")]
