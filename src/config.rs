@@ -224,12 +224,11 @@ pub fn load_or_create_secret(path: &Path, generated: [u8; 16]) -> Result<[u8; 16
         }
     }
 
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent).with_context(|| {
-                format!("failed to create secret directory {}", parent.display())
-            })?;
-        }
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create secret directory {}", parent.display()))?;
     }
 
     let parent = path

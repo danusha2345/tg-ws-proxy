@@ -32,12 +32,11 @@ impl RotatingMakeWriter {
             anyhow::bail!("log backup count cannot exceed {MAX_LOG_BACKUPS}");
         }
         let path = path.into();
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                fs::create_dir_all(parent).with_context(|| {
-                    format!("failed to create log directory {}", parent.display())
-                })?;
-            }
+        if let Some(parent) = path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create log directory {}", parent.display()))?;
         }
         let file = open_log(&path)?;
         let size = file.metadata().map_or(0, |metadata| metadata.len());

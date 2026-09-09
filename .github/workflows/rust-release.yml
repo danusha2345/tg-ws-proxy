@@ -49,8 +49,8 @@ jobs:
             exit 1
           fi
 
-      - name: Install Rust 1.85.1
-        uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
+      - name: Install Rust 1.89.0
+        uses: dtolnay/rust-toolchain@b4f984c1e7daae8e175614de3e73a8411a20333c
         with:
           components: rustfmt, clippy
 
@@ -91,8 +91,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Rust 1.85.1
-        uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
+      - name: Install Rust 1.89.0
+        uses: dtolnay/rust-toolchain@b4f984c1e7daae8e175614de3e73a8411a20333c
 
       - name: Restore Cargo cache
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
@@ -173,8 +173,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Rust 1.85.1
-        uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
+      - name: Install Rust 1.89.0
+        uses: dtolnay/rust-toolchain@b4f984c1e7daae8e175614de3e73a8411a20333c
         with:
           targets: ${{ matrix.musl_target }}
 
@@ -266,8 +266,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Rust 1.85.1
-        uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
+      - name: Install Rust 1.89.0
+        uses: dtolnay/rust-toolchain@b4f984c1e7daae8e175614de3e73a8411a20333c
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 

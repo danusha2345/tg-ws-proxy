@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   msrv:
-    name: MSRV 1.85.1
+    name: MSRV 1.89.0
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -23,8 +23,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Rust 1.85.1
-        uses: dtolnay/rust-toolchain@b0480e2d44a72e89a62650e223ba831cbca8d2be
+      - name: Install Rust 1.89.0
+        uses: dtolnay/rust-toolchain@b4f984c1e7daae8e175614de3e73a8411a20333c
         with:
           components: rustfmt, clippy
 

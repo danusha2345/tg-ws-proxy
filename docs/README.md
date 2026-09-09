@@ -72,7 +72,7 @@ macOS-приложение не notarized. Rust-сборки для Windows 7 н
 
 ## Сборка из исходников
 
-Нужен Rust `1.85` или новее:
+Нужен Rust `1.89` или новее:
 
 ```bash
 git clone https://github.com/danusha2345/tg-ws-proxy.git
