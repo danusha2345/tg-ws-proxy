@@ -9,9 +9,8 @@
 - [Исходники и ветки](https://gitlab.com/pipecpriam/tg-ws-proxy)
 
 Контрольные суммы находятся в файлах `SHA256SUMS.txt` и
-`SHA256SUMS-android.txt` внутри соответствующего релиза. Встроенный updater
-версий 1.11.2 / 0.2.1 пока обращается к GitHub; зеркало используется для
-ручного скачивания.
+`SHA256SUMS-android.txt` внутри соответствующего релиза. Начиная с версий 1.12.0 / 0.3.0
+встроенный updater сам переходит на это зеркало, если GitHub недоступен.
 
 
 [![Boosty](https://img.shields.io/badge/Boosty-Поддержать-FF7143?style=for-the-badge&logo=boosty&logoColor=white)](https://boosty.to/danusha/donate)
