@@ -171,6 +171,7 @@ impl ControlWindow {
         });
     }
 
+    #[allow(clippy::too_many_lines)]
     fn settings(&mut self, ui: &mut egui::Ui) {
         let editable = matches!(self.status, ProxyStatus::Stopped | ProxyStatus::Failed(_));
         ui.heading(self.text("Настройки подключения", "Connection settings"));
@@ -243,6 +244,11 @@ impl ControlWindow {
                     .desired_rows(2)
                     .desired_width(f32::INFINITY),
             );
+            let no_secure = self.text(
+                "CF и Worker без TLS (порт 80)",
+                "CF and Worker without TLS (port 80)",
+            );
+            ui.checkbox(&mut self.config.no_secure, no_secure);
             ui.add_space(12.0);
             ui.horizontal(|ui| {
                 ui.label(self.text("Размер пула", "Pool size"));

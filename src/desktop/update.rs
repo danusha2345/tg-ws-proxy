@@ -11,6 +11,10 @@ use tempfile::NamedTempFile;
 
 const RELEASES_API: &str =
     "https://api.github.com/repos/danusha2345/tg-ws-proxy/releases?per_page=100";
+/// Public mirror used when GitHub is unreachable; it carries the same assets
+/// and `SHA256SUMS.txt`.
+const MIRROR_RELEASES_API: &str =
+    "https://gitlab.com/api/v4/projects/pipecpriam%2Ftg-ws-proxy/releases?per_page=100";
 const TAG_PREFIX: &str = "rust-v";
 const MAX_CHECKSUM_BYTES: usize = 1024 * 1024;
 
@@ -39,6 +43,25 @@ struct GithubRelease {
     assets: Vec<ReleaseAsset>,
 }
 
+#[derive(Deserialize)]
+struct GitlabRelease {
+    tag_name: String,
+    #[serde(default)]
+    upcoming_release: bool,
+    assets: GitlabAssets,
+}
+
+#[derive(Deserialize)]
+struct GitlabAssets {
+    links: Vec<GitlabLink>,
+}
+
+#[derive(Deserialize)]
+struct GitlabLink {
+    name: String,
+    direct_asset_url: String,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 struct ReleaseAsset {
     name: String,
@@ -46,16 +69,12 @@ struct ReleaseAsset {
 }
 
 pub(super) async fn find_update() -> Result<Option<ReleaseInfo>> {
-    let releases = client()
-        .get(RELEASES_API)
-        .send()
-        .await
-        .context("не удалось запросить список GitHub Releases")?
-        .error_for_status()
-        .context("GitHub вернул ошибку при проверке обновлений")?
-        .json::<Vec<GithubRelease>>()
-        .await
-        .context("GitHub вернул некорректный список релизов")?;
+    let releases = match github_releases().await {
+        Ok(releases) => releases,
+        Err(github) => gitlab_releases()
+            .await
+            .with_context(|| format!("{github:#}; зеркало GitLab тоже недоступно"))?,
+    };
     let current = Version::parse(env!("CARGO_PKG_VERSION"))
         .context("текущая версия приложения некорректна")?;
     let latest = releases
@@ -70,6 +89,55 @@ pub(super) async fn find_update() -> Result<Option<ReleaseInfo>> {
         })
         .max_by(|left, right| left.version.cmp(&right.version));
     Ok(latest.filter(|release| release.version > current))
+}
+
+async fn github_releases() -> Result<Vec<GithubRelease>> {
+    client()
+        .get(RELEASES_API)
+        .send()
+        .await
+        .context("не удалось запросить список GitHub Releases")?
+        .error_for_status()
+        .context("GitHub вернул ошибку при проверке обновлений")?
+        .json::<Vec<GithubRelease>>()
+        .await
+        .context("GitHub вернул некорректный список релизов")
+}
+
+async fn gitlab_releases() -> Result<Vec<GithubRelease>> {
+    let releases = client()
+        .get(MIRROR_RELEASES_API)
+        .send()
+        .await
+        .context("не удалось запросить релизы с GitLab")?
+        .error_for_status()
+        .context("GitLab вернул ошибку при проверке обновлений")?
+        .json::<Vec<GitlabRelease>>()
+        .await
+        .context("GitLab вернул некорректный список релизов")?;
+    Ok(releases
+        .into_iter()
+        .map(GitlabRelease::into_common)
+        .collect())
+}
+
+impl GitlabRelease {
+    fn into_common(self) -> GithubRelease {
+        GithubRelease {
+            tag_name: self.tag_name,
+            draft: false,
+            prerelease: self.upcoming_release,
+            assets: self
+                .assets
+                .links
+                .into_iter()
+                .map(|link| ReleaseAsset {
+                    name: link.name,
+                    browser_download_url: link.direct_asset_url,
+                })
+                .collect(),
+        }
+    }
 }
 
 pub(super) async fn download_update(release: &ReleaseInfo, destination: &Path) -> Result<PathBuf> {
@@ -95,7 +163,7 @@ pub(super) async fn download_update(release: &ReleaseInfo, destination: &Path) -
         .await
         .context("не удалось скачать обновление")?
         .error_for_status()
-        .context("GitHub вернул ошибку при скачивании обновления")?;
+        .context("сервер вернул ошибку при скачивании обновления")?;
     let mut temporary = NamedTempFile::new_in(destination)
         .context("не удалось создать временный файл обновления")?;
     let mut hasher = Sha256::new();
@@ -129,7 +197,7 @@ async fn download_small_text(url: &str) -> Result<String> {
         .await
         .context("не удалось скачать контрольные суммы")?
         .error_for_status()
-        .context("GitHub вернул ошибку при скачивании контрольных сумм")?;
+        .context("сервер вернул ошибку при скачивании контрольных сумм")?;
     if response
         .content_length()
         .is_some_and(|length| length > MAX_CHECKSUM_BYTES as u64)
@@ -203,7 +271,7 @@ fn client() -> reqwest::Client {
         .https_only(true)
         .timeout(std::time::Duration::from_secs(30))
         .build()
-        .expect("static GitHub HTTP client settings are valid")
+        .expect("static updater HTTP client settings are valid")
 }
 
 pub(super) fn launch(path: &Path) -> Result<bool> {
@@ -251,6 +319,34 @@ mod tests {
         let version = Version::parse("1.9.1").unwrap();
         assert!(version > Version::parse("1.9.0-alpha.2").unwrap());
         assert!("android-v0.1.0".strip_prefix(TAG_PREFIX).is_none());
+    }
+
+    #[test]
+    fn gitlab_mirror_release_maps_direct_asset_links() {
+        let json = r#"[{"tag_name":"rust-v1.2.3","upcoming_release":false,
+            "assets":{"links":[{"name":"SHA256SUMS.txt","url":"https://x/1",
+            "direct_asset_url":"https://gitlab.com/p/-/releases/rust-v1.2.3/downloads/SHA256SUMS.txt"}]}}]"#;
+        let releases: Vec<GitlabRelease> = serde_json::from_str(json).unwrap();
+        let release = releases.into_iter().next().unwrap().into_common();
+        assert_eq!(release.tag_name, "rust-v1.2.3");
+        assert!(!release.prerelease);
+        assert_eq!(release.assets[0].name, "SHA256SUMS.txt");
+        assert!(
+            release.assets[0]
+                .browser_download_url
+                .ends_with("/downloads/SHA256SUMS.txt")
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "requires live GitLab access"]
+    async fn live_gitlab_mirror_lists_rust_releases() {
+        let releases = gitlab_releases().await.unwrap();
+        assert!(
+            releases
+                .iter()
+                .any(|release| release.tag_name.starts_with(TAG_PREFIX))
+        );
     }
 
     #[tokio::test]

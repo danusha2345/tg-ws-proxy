@@ -60,6 +60,8 @@ pub const DEFAULT_CFPROXY_DOMAINS: &[&str] = &[
 const TELEGRAM_FRONTING_CERTIFICATE_NAME: &str = "telegram.org";
 
 #[derive(Clone, Debug)]
+// Independent CLI switches, not states of one enum.
+#[allow(clippy::struct_excessive_bools)]
 pub struct ProxyConfig {
     pub host: String,
     pub port: u16,
@@ -70,6 +72,8 @@ pub struct ProxyConfig {
     pub fallback_cfproxy: bool,
     pub cfproxy_domains: Vec<String>,
     pub cfproxy_worker_domains: Vec<String>,
+    /// Connect to CF proxy and Worker domains over plain WebSocket on port 80.
+    pub disable_secure: bool,
     pub fake_tls_domain: Option<String>,
     pub masking_upstream: Option<String>,
     pub proxy_protocol: bool,
@@ -99,6 +103,7 @@ impl Default for ProxyConfig {
                 .map(ToString::to_string)
                 .collect(),
             cfproxy_worker_domains: Vec::new(),
+            disable_secure: false,
             fake_tls_domain: None,
             masking_upstream: None,
             proxy_protocol: false,
@@ -394,10 +399,25 @@ pub fn install_crypto_provider() {
     });
 }
 
+/// Bundled Mozilla roots plus the operating system store, so networks with a
+/// locally trusted CA (corporate TLS inspection, antivirus) keep working.
 fn root_store() -> RootCertStore {
-    let mut roots = RootCertStore::empty();
-    roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-    roots
+    static ROOTS: OnceLock<RootCertStore> = OnceLock::new();
+    ROOTS
+        .get_or_init(|| {
+            let mut roots = RootCertStore::empty();
+            roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+            let native = rustls_native_certs::load_native_certs();
+            let (added, ignored) = roots.add_parsable_certificates(native.certs);
+            tracing::debug!(
+                added,
+                ignored,
+                errors = native.errors.len(),
+                "loaded system root certificates"
+            );
+            roots
+        })
+        .clone()
 }
 
 /// Keeps Telegram fronting authenticated: SNI controls routing, while the

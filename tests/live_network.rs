@@ -19,6 +19,7 @@ async fn direct_telegram_websocket_is_authenticated() {
         256 * 1024,
         16 * 1024 * 1024,
         true,
+        true,
     )
     .await
     .expect("direct Telegram WebSocket handshake must succeed");
@@ -37,6 +38,7 @@ async fn fronted_telegram_websocket_keeps_webpki_authentication() {
         tls_config(),
         256 * 1024,
         16 * 1024 * 1024,
+        true,
         true,
     )
     .await

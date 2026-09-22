@@ -40,7 +40,9 @@ struct Args {
         long = "dc-ip",
         value_name = "DC:IP",
         env = "TG_WS_PROXY_DC_IPS",
-        value_delimiter = ' '
+        value_delimiter = ' ',
+        num_args = 0..=1,
+        default_missing_value = ""
     )]
     dc_ip: Vec<String>,
 
@@ -99,6 +101,9 @@ struct Args {
     #[arg(long, env = "TG_WS_PROXY_NO_CFPROXY")]
     no_cfproxy: bool,
 
+    #[arg(long, env = "TG_WS_PROXY_NO_SECURE")]
+    no_secure: bool,
+
     #[arg(long, value_name = "DOMAIN", env = "TG_WS_PROXY_FAKE_TLS_DOMAIN")]
     fake_tls_domain: Option<String>,
 
@@ -150,7 +155,9 @@ async fn main() -> Result<()> {
     } else {
         info!(secret = %config.secret_hex(), "generated a random proxy secret");
     }
-    if !args.dc_ip.is_empty() {
+    if args.dc_ip.iter().any(|value| value.trim().is_empty()) {
+        config.dc_redirects.clear();
+    } else if !args.dc_ip.is_empty() {
         config.dc_redirects = args
             .dc_ip
             .iter()
@@ -167,6 +174,7 @@ async fn main() -> Result<()> {
     if !args.cfproxy_domain.is_empty() {
         config.cfproxy_domains = normalize_domains(args.cfproxy_domain.iter().map(String::as_str))?;
     }
+    config.disable_secure = args.no_secure;
     config.cfproxy_worker_domains =
         normalize_domains(args.cfproxy_worker_domain.iter().map(String::as_str))?;
     config.fake_tls_domain = args
@@ -286,4 +294,21 @@ fn discover_advertised_host(bind_host: &str) -> String {
                 IpAddr::V6(ip) => format!("[{ip}]"),
             },
         )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bare_dc_ip_flag_is_accepted_and_keeps_explicit_values() {
+        let bare = Args::try_parse_from(["tg-ws-proxy", "--dc-ip"]).unwrap();
+        assert!(bare.dc_ip.iter().any(|value| value.trim().is_empty()));
+
+        let explicit =
+            Args::try_parse_from(["tg-ws-proxy", "--dc-ip", "2:149.154.167.220", "--no-secure"])
+                .unwrap();
+        assert_eq!(explicit.dc_ip, ["2:149.154.167.220"]);
+        assert!(explicit.no_secure);
+    }
 }
