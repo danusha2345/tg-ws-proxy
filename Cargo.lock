@@ -4318,7 +4318,7 @@ dependencies = [
 
 [[package]]
 name = "tg-ws-proxy"
-version = "1.11.2"
+version = "1.12.0"
 dependencies = [
  "aes",
  "anyhow",
@@ -4340,6 +4340,7 @@ dependencies = [
  "raw-window-handle 0.6.2",
  "reqwest",
  "rustls",
+ "rustls-native-certs",
  "semver",
  "serde",
  "serde_json",
@@ -4351,6 +4352,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tokio-tungstenite",
+ "tokio-util",
  "tracing",
  "tracing-subscriber",
  "tray-icon",
@@ -4363,7 +4365,7 @@ dependencies = [
 
 [[package]]
 name = "tg-ws-proxy-android"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "jni 0.21.1",

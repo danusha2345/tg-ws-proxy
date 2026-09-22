@@ -19,6 +19,7 @@ data class ProxySettings(
     val secret: String,
     val poolSize: Int,
     val fallbackCfproxy: Boolean,
+    val noSecure: Boolean,
     val workerDomains: String,
     val fakeTlsDomain: String,
     val maskingUpstream: String,
@@ -47,6 +48,7 @@ class ProxyPreferences(context: Context) {
             secret = readSecret(),
             poolSize = preferences.getInt(KEY_POOL_SIZE, DEFAULT_POOL_SIZE),
             fallbackCfproxy = preferences.getBoolean(KEY_CFPROXY, true),
+            noSecure = preferences.getBoolean(KEY_NO_SECURE, false),
             workerDomains = preferences.getString(KEY_WORKER_DOMAINS, "").orEmpty(),
             fakeTlsDomain = preferences.getString(KEY_FAKE_TLS, "").orEmpty(),
             maskingUpstream = preferences.getString(KEY_MASKING, "").orEmpty(),
@@ -59,6 +61,7 @@ class ProxyPreferences(context: Context) {
             putInt(KEY_PORT, settings.port)
             putInt(KEY_POOL_SIZE, settings.poolSize)
             putBoolean(KEY_CFPROXY, settings.fallbackCfproxy)
+            putBoolean(KEY_NO_SECURE, settings.noSecure)
             putString(KEY_WORKER_DOMAINS, settings.workerDomains.trim())
             putString(KEY_FAKE_TLS, settings.fakeTlsDomain.trim())
             putString(KEY_MASKING, settings.maskingUpstream.trim())
@@ -72,6 +75,7 @@ class ProxyPreferences(context: Context) {
             .put("secret", settings.secret)
             .put("poolSize", settings.poolSize)
             .put("fallbackCfproxy", settings.fallbackCfproxy)
+            .put("noSecure", settings.noSecure)
             .put(
                 "workerDomains",
                 JSONArray(ProxyInputValidator.parseDomains(settings.workerDomains)),
@@ -144,6 +148,7 @@ class ProxyPreferences(context: Context) {
         private const val KEY_PORT = "port"
         private const val KEY_POOL_SIZE = "pool-size"
         private const val KEY_CFPROXY = "cfproxy"
+        private const val KEY_NO_SECURE = "no-secure"
         private const val KEY_WORKER_DOMAINS = "worker-domains"
         private const val KEY_FAKE_TLS = "fake-tls"
         private const val KEY_MASKING = "masking"

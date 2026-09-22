@@ -3,6 +3,7 @@ package com.danusha.tgwsproxy
 import android.content.Context
 import android.os.Build
 import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -20,6 +21,10 @@ data class AndroidRelease(
 object GithubUpdater {
     private const val RELEASES_API =
         "https://api.github.com/repos/danusha2345/tg-ws-proxy/releases?per_page=100"
+
+    // Public mirror used when GitHub is unreachable; same APKs and checksums.
+    private const val MIRROR_RELEASES_API =
+        "https://gitlab.com/api/v4/projects/pipecpriam%2Ftg-ws-proxy/releases?per_page=100"
     private const val TAG_PREFIX = "android-v"
     private const val CHECKSUM_ASSET = "SHA256SUMS-android.txt"
     private const val UNIVERSAL_ASSET = "TgWsProxy_android_universal.apk"
@@ -30,7 +35,7 @@ object GithubUpdater {
     private const val MAX_APK_BYTES = 256L * 1024 * 1024
 
     fun findUpdate(currentVersion: String): AndroidRelease? {
-        val releases = JSONArray(downloadText(RELEASES_API))
+        val releases = fetchReleases()
         val current = parseStableVersion(currentVersion) ?: return null
         val preferredAsset = if (Build.SUPPORTED_ABIS.contains("arm64-v8a")) {
             ARM64_ASSET
@@ -59,6 +64,42 @@ object GithubUpdater {
             }
             .maxWithOrNull { left, right -> compareVersions(left.first, right.first) }
             ?.second
+    }
+
+    private fun fetchReleases(): JSONArray = try {
+        JSONArray(downloadText(RELEASES_API))
+    } catch (github: Exception) {
+        try {
+            gitlabToGithub(JSONArray(downloadText(MIRROR_RELEASES_API)))
+        } catch (mirror: Exception) {
+            mirror.addSuppressed(github)
+            throw mirror
+        }
+    }
+
+    /** Maps GitLab release JSON onto the GitHub fields read by [findUpdate]. */
+    private fun gitlabToGithub(releases: JSONArray): JSONArray {
+        val result = JSONArray()
+        for (index in 0 until releases.length()) {
+            val release = releases.getJSONObject(index)
+            val links = release.optJSONObject("assets")?.optJSONArray("links") ?: JSONArray()
+            val assets = JSONArray()
+            for (linkIndex in 0 until links.length()) {
+                val link = links.getJSONObject(linkIndex)
+                assets.put(
+                    JSONObject()
+                        .put("name", link.optString("name"))
+                        .put("browser_download_url", link.optString("direct_asset_url")),
+                )
+            }
+            result.put(
+                JSONObject()
+                    .put("tag_name", release.optString("tag_name"))
+                    .put("prerelease", release.optBoolean("upcoming_release"))
+                    .put("assets", assets),
+            )
+        }
+        return result
     }
 
     fun download(context: Context, release: AndroidRelease): File {
@@ -140,7 +181,7 @@ object GithubUpdater {
         try {
             val declaredLength = connection.contentLengthLong
             require(declaredLength <= 0 || declaredLength <= MAX_TEXT_BYTES) {
-                "GitHub response is unexpectedly large"
+                "Update server response is unexpectedly large"
             }
             val bytes = connection.inputStream.use { input ->
                 val output = java.io.ByteArrayOutputStream()
@@ -149,7 +190,7 @@ object GithubUpdater {
                     val count = input.read(buffer)
                     if (count < 0) break
                     require(output.size() + count <= MAX_TEXT_BYTES) {
-                        "GitHub response is unexpectedly large"
+                        "Update server response is unexpectedly large"
                     }
                     output.write(buffer, 0, count)
                 }
@@ -171,7 +212,7 @@ object GithubUpdater {
             setRequestProperty("Accept", "application/vnd.github+json")
             setRequestProperty("User-Agent", "tg-ws-proxy-android/${BuildConfig.VERSION_NAME}")
             connect()
-            require(responseCode in 200..299) { "GitHub returned HTTP $responseCode" }
+            require(responseCode in 200..299) { "Update server returned HTTP $responseCode" }
             require(this.url.protocol == "https") { "Update redirect left HTTPS" }
         }
     }

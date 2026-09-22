@@ -480,7 +480,16 @@ impl WsPool {
                     .finish();
                 let path = format!("/apiws?{query}");
                 for domain in domains {
-                    if let Ok(websocket) = self.connect(&domain, &domain, None, &path, false).await
+                    if let Ok(websocket) = self
+                        .connect(
+                            &domain,
+                            &domain,
+                            None,
+                            &path,
+                            false,
+                            !self.inner.config.disable_secure,
+                        )
+                        .await
                     {
                         return Some((websocket, Some(domain)));
                     }
@@ -504,7 +513,7 @@ impl WsPool {
                 return Some((websocket, None));
             }
 
-            match self.connect(host, domain, None, "/apiws", true).await {
+            match self.connect(host, domain, None, "/apiws", true, true).await {
                 Ok(websocket) => {
                     self.set_fronting_preference(key, false);
                     return Some((websocket, None));
@@ -528,7 +537,7 @@ impl WsPool {
         domain: &str,
     ) -> Option<RawWebSocket> {
         let websocket = self
-            .connect(host, domain, Some("sprinthost.ru"), "/apiws", true)
+            .connect(host, domain, Some("sprinthost.ru"), "/apiws", true, true)
             .await
             .ok()?;
         Stats::increment(&self.inner.stats.connections_fronting);
@@ -543,6 +552,7 @@ impl WsPool {
         sni: Option<&str>,
         path: &str,
         request_binary_subprotocol: bool,
+        secure: bool,
     ) -> Result<RawWebSocket, WebSocketError> {
         RawWebSocket::connect(
             host,
@@ -554,6 +564,7 @@ impl WsPool {
             self.inner.config.buffer_size,
             self.inner.config.max_ws_frame_size,
             request_binary_subprotocol,
+            secure,
         )
         .await
     }

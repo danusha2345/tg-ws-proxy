@@ -20,10 +20,11 @@ use tokio_tungstenite::tungstenite::http::{HeaderValue, StatusCode};
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use tokio_tungstenite::tungstenite::{Error as TungsteniteError, Message};
 use tokio_tungstenite::{WebSocketStream, client_async_with_config};
+use tokio_util::either::Either;
 
 use crate::config::fronting_tls_config;
 
-type WsStream = WebSocketStream<TlsStream<TcpStream>>;
+type WsStream = WebSocketStream<Either<TlsStream<TcpStream>, TcpStream>>;
 type WsSink = SplitSink<WsStream, Message>;
 type WsSource = SplitStream<WsStream>;
 
@@ -33,8 +34,10 @@ fn build_request(
     domain: &str,
     path: &str,
     request_binary_subprotocol: bool,
+    secure: bool,
 ) -> Result<tokio_tungstenite::tungstenite::http::Request<()>, TungsteniteError> {
-    let uri = format!("wss://{domain}{path}");
+    let scheme = if secure { "wss" } else { "ws" };
+    let uri = format!("{scheme}://{domain}{path}");
     let mut request = uri.into_client_request()?;
     if request_binary_subprotocol {
         request
@@ -199,39 +202,53 @@ impl RawWebSocket {
         buffer_size: usize,
         max_frame_size: usize,
         request_binary_subprotocol: bool,
+        secure: bool,
     ) -> Result<Self, WebSocketError> {
         timeout(operation_timeout, async {
-            let stream = TcpStream::connect((host, 443)).await?;
+            let port = if secure { 443 } else { 80 };
+            let stream = TcpStream::connect((host, port)).await?;
             stream.set_nodelay(true)?;
             let socket = SockRef::from(&stream);
             let _ = socket.set_recv_buffer_size(buffer_size);
             let _ = socket.set_send_buffer_size(buffer_size);
 
-            let tls_server_name = sni.unwrap_or(domain);
-            let server_name = ServerName::try_from(tls_server_name.to_owned())
-                .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid TLS SNI"))?;
-            let tls_config = if tls_server_name == domain {
-                tls_config
+            let stream = if secure {
+                let tls_server_name = sni.unwrap_or(domain);
+                let server_name = ServerName::try_from(tls_server_name.to_owned())
+                    .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid TLS SNI"))?;
+                let tls_config = if tls_server_name == domain {
+                    tls_config
+                } else {
+                    if !is_telegram_fronting_route(domain, tls_server_name) {
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            "TLS SNI override is restricted to Telegram fronting",
+                        )
+                        .into());
+                    }
+                    fronting_tls_config().map_err(io::Error::other)?
+                };
+                let tls = TlsConnector::from(tls_config)
+                    .connect(server_name, stream)
+                    .await?;
+                Either::Left(tls)
             } else {
-                if !is_telegram_fronting_route(domain, tls_server_name) {
+                if sni.is_some() {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
-                        "TLS SNI override is restricted to Telegram fronting",
+                        "TLS SNI override requires a secure connection",
                     )
                     .into());
                 }
-                fronting_tls_config().map_err(io::Error::other)?
+                Either::Right(stream)
             };
-            let tls = TlsConnector::from(tls_config)
-                .connect(server_name, stream)
-                .await?;
 
-            let request = build_request(domain, path, request_binary_subprotocol)?;
+            let request = build_request(domain, path, request_binary_subprotocol, secure)?;
             let ws_config = WebSocketConfig::default()
                 .max_frame_size(Some(max_frame_size))
                 .max_message_size(Some(max_frame_size));
 
-            let websocket = match client_async_with_config(request, tls, Some(ws_config)).await {
+            let websocket = match client_async_with_config(request, stream, Some(ws_config)).await {
                 Ok((websocket, _response)) => websocket,
                 Err(TungsteniteError::Http(response)) => {
                     let location = response
@@ -310,14 +327,19 @@ mod tests {
 
     #[test]
     fn worker_compatibility_can_omit_binary_subprotocol() {
-        let direct = build_request("kws4.web.telegram.org", "/apiws", true).unwrap();
+        let direct = build_request("kws4.web.telegram.org", "/apiws", true, true).unwrap();
         assert_eq!(
             direct.headers().get(SEC_WEBSOCKET_PROTOCOL).unwrap(),
             "binary"
         );
 
-        let worker = build_request("example.workers.dev", "/apiws?dst=127.0.0.1", false).unwrap();
+        let worker =
+            build_request("example.workers.dev", "/apiws?dst=127.0.0.1", false, true).unwrap();
         assert!(worker.headers().get(SEC_WEBSOCKET_PROTOCOL).is_none());
+
+        let plain = build_request("example.workers.dev", "/apiws", false, false).unwrap();
+        assert_eq!(plain.uri().scheme_str(), Some("ws"));
+        assert_eq!(direct.uri().scheme_str(), Some("wss"));
     }
 
     #[test]

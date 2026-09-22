@@ -37,6 +37,7 @@ pub struct DesktopConfig {
     #[serde(deserialize_with = "deserialize_domains")]
     pub cfproxy_worker_domain: Vec<String>,
     pub force_test_dc: bool,
+    pub no_secure: bool,
     pub ws_keepalive_interval: u64,
     pub language: String,
     pub appearance: String,
@@ -65,6 +66,7 @@ impl Default for DesktopConfig {
             cfproxy_worker_enabled: false,
             cfproxy_worker_domain: Vec::new(),
             force_test_dc: false,
+            no_secure: false,
             ws_keepalive_interval: 30,
             language: default_language(),
             appearance: "auto".to_owned(),
@@ -179,6 +181,7 @@ impl DesktopConfig {
                 .context("pool_size does not fit this platform")?,
             fallback_cfproxy: self.cfproxy,
             force_test_dc: self.force_test_dc,
+            disable_secure: self.no_secure,
             ..crate::config::ProxyConfig::default()
         };
         config.dc_redirects = self

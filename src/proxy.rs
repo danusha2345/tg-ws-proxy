@@ -142,6 +142,9 @@ impl Proxy {
             port = self.inner.config.port,
             "Telegram MTProto WebSocket bridge is listening"
         );
+        if self.inner.config.disable_secure {
+            warn!("CF proxy and Worker use plain WebSocket on port 80");
+        }
         on_ready();
 
         self.inner.pool.warm_up().await;
@@ -425,7 +428,15 @@ impl Proxy {
         if websocket.is_none() {
             for domain in &domains {
                 match self
-                    .connect_websocket(&target.to_string(), domain, None, path, ws_timeout, true)
+                    .connect_websocket(
+                        &target.to_string(),
+                        domain,
+                        None,
+                        path,
+                        ws_timeout,
+                        true,
+                        true,
+                    )
                     .await
                 {
                     Ok(connected) => {
@@ -592,7 +603,15 @@ impl Proxy {
                 .finish();
             let path = format!("/apiws?{path}");
             match self
-                .connect_websocket(&worker, &worker, None, &path, CONNECT_TIMEOUT, false)
+                .connect_websocket(
+                    &worker,
+                    &worker,
+                    None,
+                    &path,
+                    CONNECT_TIMEOUT,
+                    false,
+                    !self.inner.config.disable_secure,
+                )
                 .await
             {
                 Ok(websocket) => {
@@ -634,7 +653,15 @@ impl Proxy {
             for base_domain in domains {
                 let domain = format!("kws{}.{}", client_init.dc, base_domain);
                 match self
-                    .connect_websocket(&domain, &domain, None, "/apiws", CONNECT_TIMEOUT, true)
+                    .connect_websocket(
+                        &domain,
+                        &domain,
+                        None,
+                        "/apiws",
+                        CONNECT_TIMEOUT,
+                        true,
+                        !self.inner.config.disable_secure,
+                    )
                     .await
                 {
                     Ok(websocket) => {
@@ -708,6 +735,7 @@ impl Proxy {
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn connect_websocket(
         &self,
         host: &str,
@@ -716,6 +744,7 @@ impl Proxy {
         path: &str,
         connect_timeout: Duration,
         request_binary_subprotocol: bool,
+        secure: bool,
     ) -> Result<RawWebSocket, WebSocketError> {
         RawWebSocket::connect(
             host,
@@ -727,6 +756,7 @@ impl Proxy {
             self.inner.config.buffer_size,
             self.inner.config.max_ws_frame_size,
             request_binary_subprotocol,
+            secure,
         )
         .await
     }
