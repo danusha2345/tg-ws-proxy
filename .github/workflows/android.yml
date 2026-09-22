@@ -47,6 +47,9 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          # The legacy default 'tools' package is no longer published.
+          packages: platform-tools
 
       - name: Install Android components
         shell: bash
