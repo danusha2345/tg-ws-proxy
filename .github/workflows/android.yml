@@ -20,6 +20,11 @@ on:
       - "Cargo.lock"
       - ".github/workflows/android.yml"
   workflow_dispatch:
+    inputs:
+      release_candidate:
+        description: Build signed release APKs without publishing
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -82,10 +87,12 @@ jobs:
           cargo test --locked -p tg-ws-proxy-android
 
       - name: Test, lint and build Android app
+        if: ${{ !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/android-port' && inputs.release_candidate) }}
         working-directory: android
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
 
       - name: Validate APK
+        if: ${{ !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/android-port' && inputs.release_candidate) }}
         shell: bash
         run: |
           set -euo pipefail
@@ -94,3 +101,87 @@ jobs:
           unzip -l "$apk" | grep -q 'lib/arm64-v8a/libtg_ws_proxy_android.so'
           unzip -l "$apk" | grep -q 'lib/armeabi-v7a/libtg_ws_proxy_android.so'
           unzip -l "$apk" | grep -q 'lib/x86_64/libtg_ws_proxy_android.so'
+
+      - name: Prepare persistent Android signing key
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/android-port' && inputs.release_candidate }}
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.TG_WS_PROXY_ANDROID_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.TG_WS_PROXY_ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.TG_WS_PROXY_ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.TG_WS_PROXY_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_B64"
+          test -n "$STORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
+          keystore="$RUNNER_TEMP/tg-ws-proxy-release.p12"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode >"$keystore"
+          test -s "$keystore"
+          chmod 600 "$keystore"
+          {
+            echo "TG_WS_PROXY_ANDROID_KEYSTORE=$keystore"
+            echo "TG_WS_PROXY_ANDROID_STORE_PASSWORD=$STORE_PASSWORD"
+            echo "TG_WS_PROXY_ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "TG_WS_PROXY_ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+          } >>"$GITHUB_ENV"
+
+      - name: Test, lint and build release APKs
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/android-port' && inputs.release_candidate }}
+        working-directory: android
+        run: ./gradlew --no-daemon testDebugUnitTest lintRelease assembleRelease
+
+      - name: Prepare release candidate assets
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/android-port' && inputs.release_candidate }}
+        shell: bash
+        env:
+          EXPECTED_CERT_SHA256: ${{ secrets.TG_WS_PROXY_ANDROID_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          output=android/app/build/outputs/apk/release
+          universal="$(find "$output" -name '*universal*release.apk' -print -quit)"
+          arm64="$(find "$output" -name '*arm64-v8a*release.apk' -print -quit)"
+          test -s "$universal"
+          test -s "$arm64"
+          cp "$universal" dist/TgWsProxy_android_universal.apk
+          cp "$arm64" dist/TgWsProxy_android_arm64-v8a.apk
+
+          expected_cert="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr '[:upper:]' '[:lower:]')"
+          test -n "$expected_cert"
+          cert_output="$RUNNER_TEMP/android-cert.txt"
+          for apk in dist/TgWsProxy_android_*.apk; do
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" \
+              verify --verbose --print-certs "$apk" >"$cert_output"
+            actual_cert="$(
+              sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$cert_output" \
+                | tr '[:upper:]' '[:lower:]' \
+                | head -n 1
+            )"
+            test "$actual_cert" = "$expected_cert"
+          done
+          universal_abis="$(
+            unzip -Z1 dist/TgWsProxy_android_universal.apk \
+              | sed -n 's|^lib/\([^/]*\)/libtg_ws_proxy_android.so$|\1|p' \
+              | sort
+          )"
+          test "$universal_abis" = "$(printf '%s\n' arm64-v8a armeabi-v7a x86_64)"
+          arm64_abis="$(
+            unzip -Z1 dist/TgWsProxy_android_arm64-v8a.apk \
+              | sed -n 's|^lib/\([^/]*\)/libtg_ws_proxy_android.so$|\1|p'
+          )"
+          test "$arm64_abis" = arm64-v8a
+          (
+            cd dist
+            sha256sum TgWsProxy_android_*.apk >SHA256SUMS-android.txt
+            sha256sum --check SHA256SUMS-android.txt
+          )
+
+      - name: Upload Android release candidate
+        if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/android-port' && inputs.release_candidate }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: Android-release-candidate
+          path: dist/*
+          if-no-files-found: error
