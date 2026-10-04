@@ -368,7 +368,7 @@ impl eframe::App for ControlWindow {
                 ui.separator();
                 ui.horizontal_wrapped(|ui| {
                     if ui.button(self.text("Журнал", "Log")).clicked() { self.send(WorkerCommand::OpenLogs); }
-                    let enabled = !matches!(self.update, UpdateState::Checking | UpdateState::Downloading { .. });
+                    let enabled = !matches!(self.update, UpdateState::Checking | UpdateState::Downloading { .. } | UpdateState::Installing);
                     if ui.add_enabled(enabled, egui::Button::new(Labels::new(self.language).update(&self.update))).clicked() { self.update_action(); }
                     if ui.button(self.text("Выйти", "Exit")).clicked() { self.exiting = true; self.send(WorkerCommand::Exit); }
                 });

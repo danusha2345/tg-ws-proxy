@@ -206,7 +206,7 @@ async fn run_async(
 fn update_is_actionable(state: &UpdateState) -> bool {
     !matches!(
         state,
-        UpdateState::Checking | UpdateState::Downloading { .. }
+        UpdateState::Checking | UpdateState::Downloading { .. } | UpdateState::Installing
     )
 }
 
@@ -218,6 +218,7 @@ fn update_command(state: &UpdateState) -> WorkerCommand {
         | UpdateState::Checking
         | UpdateState::Current
         | UpdateState::Downloading { .. }
+        | UpdateState::Installing
         | UpdateState::Failed => WorkerCommand::CheckUpdates,
     }
 }

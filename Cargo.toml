@@ -1,6 +1,6 @@
 [package]
 name = "tg-ws-proxy"
-version = "1.12.0"
+version = "1.13.0"
 edition = "2024"
 rust-version = "1.89"
 description = "Telegram Desktop WebSocket bridge proxy"
