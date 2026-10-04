@@ -66,7 +66,7 @@ async fn run_with_updates(
     let mut current_link = None;
     let mut clipboard = None;
     let mut latest_update: Option<ReleaseInfo> = None;
-    let mut downloaded_update = None;
+    let mut downloaded_update: Option<PathBuf> = None;
 
     start_proxy(
         &paths,
@@ -159,18 +159,10 @@ async fn run_with_updates(
                             let _ = event_tx.send(WorkerEvent::Update(UpdateState::Failed));
                             continue;
                         };
-                        match update::launch(path) {
-                            Ok(should_exit) if should_exit => {
-                                stop_proxy(event_tx, &mut controller, &mut status_rx).await;
-                                return Ok(());
-                            }
-                            Ok(false) => {}
-                            Ok(true) => unreachable!("handled above"),
-                            Err(error) => {
-                                warn!(%error, "failed to launch desktop update");
-                                let _ = event_tx.send(WorkerEvent::Update(UpdateState::Failed));
-                            }
-                        }
+                        if !update_jobs.is_empty() { continue; }
+                        let path = path.to_owned();
+                        let _ = event_tx.send(WorkerEvent::Update(UpdateState::Installing));
+                        update_jobs.spawn(async move { UpdateResult::Install(update::launch(&path).await) });
                     }
                     WorkerCommand::Exit => {
                         stop_proxy(event_tx, &mut controller, &mut status_rx).await;
@@ -180,6 +172,15 @@ async fn run_with_updates(
             }
             result = update_jobs.join_next(), if !update_jobs.is_empty() => {
                 let state = match result {
+                    Some(Ok(UpdateResult::Install(Ok(true)))) => {
+                        stop_proxy(event_tx, &mut controller, &mut status_rx).await;
+                        return Ok(());
+                    }
+                    Some(Ok(UpdateResult::Install(Ok(false)))) => UpdateState::Idle,
+                    Some(Ok(UpdateResult::Install(Err(error)))) => {
+                        warn!(%error, "failed to install desktop update");
+                        UpdateState::Failed
+                    }
                     Some(Ok(UpdateResult::Check(Ok(release)))) => {
                         downloaded_update = None;
                         let state = release.as_ref().map_or(UpdateState::Current, |release| UpdateState::Available { version: release.version.to_string() });
@@ -216,6 +217,7 @@ async fn run_with_updates(
 }
 
 enum UpdateResult {
+    Install(Result<bool>),
     Check(Result<Option<ReleaseInfo>>),
     Download {
         version: String,

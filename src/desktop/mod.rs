@@ -1,6 +1,8 @@
 mod icon;
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "linux")]
+mod linux_update;
 #[cfg(target_os = "macos")]
 mod native;
 mod paths;
@@ -128,6 +130,7 @@ impl Labels {
             (Language::Russian, UpdateState::Downloading { version }) => {
                 format!("Скачивается {version}…")
             }
+            (Language::Russian, UpdateState::Installing) => "Установка обновления…".to_owned(),
             (Language::Russian, UpdateState::Ready { version }) => {
                 format!("Установить обновление {version}")
             }
@@ -143,6 +146,7 @@ impl Labels {
             (Language::English, UpdateState::Downloading { version }) => {
                 format!("Downloading {version}…")
             }
+            (Language::English, UpdateState::Installing) => "Installing update…".to_owned(),
             (Language::English, UpdateState::Ready { version }) => {
                 format!("Install update {version}")
             }

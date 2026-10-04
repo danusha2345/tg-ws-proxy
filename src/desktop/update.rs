@@ -26,6 +26,7 @@ pub(crate) enum UpdateState {
     Available { version: String },
     Downloading { version: String },
     Ready { version: String },
+    Installing,
     Failed,
 }
 
@@ -250,16 +251,10 @@ fn platform_asset_names() -> Vec<&'static str> {
 
 #[cfg(target_os = "linux")]
 fn linux_asset_names(arch: &str) -> Vec<&'static str> {
-    let rpm = fs::read_to_string("/etc/os-release").is_ok_and(|value| {
-        value.contains("ID=fedora") || value.contains("ID_LIKE=\"rhel fedora\"")
+    let kind = std::env::current_exe().map_or(super::linux_update::Kind::Unsupported, |exe| {
+        super::linux_update::detect(&exe)
     });
-    match (rpm, arch) {
-        (true, "amd64") => vec!["TgWsProxy_linux_amd64.rpm", "TgWsProxy_linux_amd64.deb"],
-        (true, "arm64") => vec!["TgWsProxy_linux_arm64.rpm", "TgWsProxy_linux_arm64.deb"],
-        (false, "amd64") => vec!["TgWsProxy_linux_amd64.deb", "TgWsProxy_linux_amd64.rpm"],
-        (false, "arm64") => vec!["TgWsProxy_linux_arm64.deb", "TgWsProxy_linux_arm64.rpm"],
-        _ => Vec::new(),
-    }
+    super::linux_update::asset(kind, arch).into_iter().collect()
 }
 
 fn client() -> reqwest::Client {
@@ -274,7 +269,10 @@ fn client() -> reqwest::Client {
         .expect("static updater HTTP client settings are valid")
 }
 
-pub(super) fn launch(path: &Path) -> Result<bool> {
+#[cfg_attr(not(target_os = "linux"), allow(clippy::unused_async))]
+pub(super) async fn launch(path: &Path) -> Result<bool> {
+    #[cfg(target_os = "linux")]
+    return super::linux_update::install(path.to_owned()).await;
     #[cfg(windows)]
     {
         use std::process::Command;
@@ -295,7 +293,7 @@ pub(super) fn launch(path: &Path) -> Result<bool> {
             .context("не удалось запустить установщик обновления")?;
         Ok(true)
     }
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "linux")))]
     {
         open::that(path).context("не удалось открыть установщик обновления")?;
         Ok(false)
