@@ -4,8 +4,8 @@
 
 Если GitHub недоступен, используйте публичное зеркало с файлами на GitLab:
 
-- [Windows, Linux и macOS — Rust 1.13.0](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/rust-v1.13.0)
-- [Android 0.3.0 — подписанные APK](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/android-v0.3.0)
+- [Windows, Linux и macOS — Rust 1.13.1](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/rust-v1.13.1)
+- [Android 0.3.1 — подписанные APK](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/android-v0.3.1)
 - [Исходники и ветки](https://gitlab.com/pipecpriam/tg-ws-proxy)
 
 Контрольные суммы находятся в файлах `SHA256SUMS.txt` и

@@ -769,7 +769,8 @@ pub fn websocket_domains(dc: i16, media: bool) -> Vec<String> {
     if media {
         vec![media_domain, primary]
     } else {
-        vec![primary, media_domain]
+        // Media endpoints reject ordinary MTProto handshakes with -444 (invalid DC).
+        vec![primary]
     }
 }
 
@@ -790,18 +791,34 @@ mod tests {
 
     #[test]
     fn maps_cdn_dc_to_dc2_domains() {
+        assert_eq!(websocket_domains(203, false), ["kws2.web.telegram.org"]);
         assert_eq!(
-            websocket_domains(203, false),
-            ["kws2.web.telegram.org", "kws2-1.web.telegram.org"]
+            websocket_domains(203, true),
+            ["kws2-1.web.telegram.org", "kws2.web.telegram.org"]
         );
     }
 
     #[test]
+    fn regular_connections_never_use_media_domain() {
+        for dc in 1..=5 {
+            assert_eq!(
+                websocket_domains(dc, false),
+                [format!("kws{dc}.web.telegram.org")]
+            );
+        }
+    }
+
+    #[test]
     fn prefers_media_domain_for_media_connections() {
-        assert_eq!(
-            websocket_domains(4, true),
-            ["kws4-1.web.telegram.org", "kws4.web.telegram.org"]
-        );
+        for dc in 1..=5 {
+            assert_eq!(
+                websocket_domains(dc, true),
+                [
+                    format!("kws{dc}-1.web.telegram.org"),
+                    format!("kws{dc}.web.telegram.org")
+                ]
+            );
+        }
     }
 
     #[test]
