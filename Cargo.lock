@@ -4339,7 +4339,7 @@ dependencies = [
 
 [[package]]
 name = "tg-ws-proxy"
-version = "1.15.1"
+version = "1.15.2"
 dependencies = [
  "aes",
  "anyhow",
