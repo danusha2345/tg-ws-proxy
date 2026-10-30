@@ -40,7 +40,7 @@
     <string name="secret_hint">Connection key (32 HEX characters)</string>
     <string name="generate_secret">Generate a new key</string>
     <string name="pool_hint">WebSocket pool size</string>
-    <string name="no_secure_label">WS and Worker without TLS (port 80)</string>
+    <string name="no_secure_label">Prefer WS/80; Worker without TLS</string>
     <string name="cf_h2_label">HTTP/2 for media</string>
     <string name="cfproxy_label">Free Cloudflare route</string>
     <string name="worker_domains_hint">Cloudflare Worker domains (comma or space separated)</string>

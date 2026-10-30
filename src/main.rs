@@ -116,7 +116,11 @@ struct Args {
     #[arg(long, env = "TG_WS_PROXY_NO_CFPROXY")]
     no_cfproxy: bool,
 
-    #[arg(long, env = "TG_WS_PROXY_NO_SECURE")]
+    #[arg(
+        long,
+        env = "TG_WS_PROXY_NO_SECURE",
+        help = "Prefer CF WS port 80 with TLS rescue; use plaintext Worker transport"
+    )]
     no_secure: bool,
 
     #[arg(long, value_name = "DOMAIN", env = "TG_WS_PROXY_FAKE_TLS_DOMAIN")]

@@ -152,7 +152,7 @@ impl Proxy {
             "Telegram MTProto WebSocket bridge is listening"
         );
         if self.inner.config.disable_secure {
-            warn!("CF proxy and Worker use plain WebSocket on port 80");
+            warn!("CF proxy prefers port 80 with TLS rescue; Worker uses port 80");
         }
         on_ready();
 
@@ -749,33 +749,44 @@ impl Proxy {
                         tokio::time::sleep(Duration::from_millis(200)).await;
                     }
                     let domain = format!("kws{}.{}", client_init.dc, base_domain);
-                    match self
-                        .connect_websocket(
-                            &domain,
-                            &domain,
-                            None,
-                            "/apiws",
-                            CONNECT_TIMEOUT,
-                            true,
-                            !self.inner.config.disable_secure,
-                        )
-                        .await
-                    {
-                        Ok(websocket) => {
+                    let connected =
+                        cf_websocket_with_tls_rescue(self.inner.config.disable_secure, |secure| {
+                            let domain = &domain;
+                            async move {
+                                match self
+                                    .connect_websocket(
+                                        domain,
+                                        domain,
+                                        None,
+                                        "/apiws",
+                                        CONNECT_TIMEOUT,
+                                        true,
+                                        secure,
+                                    )
+                                    .await
+                                {
+                                    Ok(websocket) => Some(websocket),
+                                    Err(error) => {
+                                        debug!(%domain, secure, %error, "CF proxy fallback failed");
+                                        None
+                                    }
+                                }
+                            }
+                        })
+                        .await;
+                    match connected {
+                        Some((websocket, secure)) => {
                             if let Err(error) = websocket.sender.send_binary(&relay_init).await {
                                 debug!(%domain, %error, "CF WebSocket failed before client data");
                                 websocket.close().await;
                                 return None;
                             }
-                            Some((websocket, base_domain, domain))
+                            Some((websocket, base_domain, domain, secure))
                         }
-                        Err(error) => {
-                            debug!(%domain, %error, "CF proxy fallback failed");
-                            None
-                        }
+                        None => None,
                     }
                 });
-            if let Some((websocket, base_domain, domain)) =
+            if let Some((websocket, base_domain, domain, secure)) =
                 first_available(attempts, CF_CONNECT_CONCURRENCY, CF_CONNECT_BUDGET).await
             {
                 self.inner
@@ -790,6 +801,7 @@ impl Proxy {
                     media = client_init.media,
                     route = "cloudflare-proxy",
                     domain = %domain,
+                    secure,
                     "upstream route connected"
                 );
                 let splitter = MessageSplitter::new(
@@ -919,6 +931,32 @@ impl Proxy {
         replays.insert(client_random, now);
         true
     }
+}
+
+// Legacy relay profiles may prefer port 80, which some networks stall. Race a
+// delayed verified TLS attempt without replaying any client payload. TLS-first
+// profiles never downgrade to plaintext. The outer domain race bounds the total.
+async fn cf_websocket_with_tls_rescue<T, F, Fut>(
+    prefer_plain: bool,
+    connect: F,
+) -> Option<(T, bool)>
+where
+    F: Fn(bool) -> Fut,
+    Fut: Future<Output = Option<T>>,
+{
+    let attempts = [false, true]
+        .into_iter()
+        .filter(|secure| prefer_plain || *secure)
+        .map(|secure| {
+            let attempt = connect(secure);
+            async move {
+                if prefer_plain && secure {
+                    tokio::time::sleep(Duration::from_millis(300)).await;
+                }
+                attempt.await.map(|transport| (transport, secure))
+            }
+        });
+    first_available(attempts, 2, CONNECT_TIMEOUT).await
 }
 
 // Dropping the losing futures closes their transports. Only the selected route
@@ -1164,6 +1202,43 @@ fn shuffle<T>(values: &mut [T]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn legacy_plain_ws_stall_recovers_over_tls() {
+        let selected = timeout(
+            Duration::from_secs(1),
+            cf_websocket_with_tls_rescue(true, |secure| async move {
+                if secure {
+                    Some("tls")
+                } else {
+                    std::future::pending().await
+                }
+            }),
+        )
+        .await
+        .expect("TLS rescue must bypass stalled port 80");
+        assert_eq!(selected, Some(("tls", true)));
+    }
+
+    #[tokio::test]
+    async fn tls_ws_profile_never_downgrades_to_plaintext() {
+        let selected = cf_websocket_with_tls_rescue(false, |secure| async move {
+            assert!(secure, "TLS profile must never attempt plaintext");
+            None::<()>
+        })
+        .await;
+        assert_eq!(selected, None);
+    }
+
+    #[tokio::test]
+    async fn healthy_plain_ws_does_not_open_tls_rescue() {
+        let selected = cf_websocket_with_tls_rescue(true, |secure| async move {
+            assert!(!secure, "healthy preferred route must win before TLS opens");
+            Some(())
+        })
+        .await;
+        assert_eq!(selected, Some(((), false)));
+    }
 
     #[tokio::test]
     async fn fallback_does_not_wait_for_a_stalled_domain() {

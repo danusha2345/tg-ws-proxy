@@ -40,7 +40,7 @@
     <string name="secret_hint">Ключ подключения (32 символа HEX)</string>
     <string name="generate_secret">Создать новый ключ</string>
     <string name="pool_hint">Размер пула WebSocket</string>
-    <string name="no_secure_label">WS и Worker без TLS (порт 80)</string>
+    <string name="no_secure_label">Предпочитать WS/80; Worker без TLS</string>
     <string name="cf_h2_label">HTTP/2 для медиа</string>
     <string name="cfproxy_label">Бесплатный маршрут Cloudflare</string>
     <string name="worker_domains_hint">Домены Cloudflare Worker (через запятую или пробел)</string>
