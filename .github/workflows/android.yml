@@ -23,6 +23,14 @@ on:
       - ".github/workflows/android.yml"
   workflow_dispatch:
     inputs:
+      signing_backup:
+        description: Export signing credentials encrypted to a supplied public key
+        type: boolean
+        default: false
+      backup_recipient:
+        description: Base64 encoded OpenPGP public key (no private key)
+        type: string
+        default: ""
       release_candidate:
         description: Build signed release APKs without publishing
         type: boolean
@@ -32,11 +40,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-${{ github.workflow }}-${{ github.ref }}
+  group: android-${{ github.workflow }}-${{ github.ref }}-${{ inputs.signing_backup && 'signing-backup' || github.event_name }}
   cancel-in-progress: true
 
 jobs:
   verify:
+    if: ${{ !inputs.signing_backup }}
     name: Test and build APK
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -190,3 +199,52 @@ jobs:
           name: Android-release-candidate
           path: dist/*
           if-no-files-found: error
+
+  signing-backup:
+    name: Encrypted Android signing backup
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/android-port' && inputs.signing_backup }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Encrypt to the local recovery recipient
+        env:
+          RECIPIENT_B64: ${{ inputs.backup_recipient }}
+          KEYSTORE_B64: ${{ secrets.TG_WS_PROXY_ANDROID_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.TG_WS_PROXY_ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.TG_WS_PROXY_ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.TG_WS_PROXY_ANDROID_KEY_PASSWORD }}
+          CERT_SHA256: ${{ secrets.TG_WS_PROXY_ANDROID_CERT_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 - <<'PYBACKUP'
+          import base64, json, os
+          from pathlib import Path
+          directory = Path(os.environ["RUNNER_TEMP"])
+          recipient = base64.b64decode(os.environ["RECIPIENT_B64"], validate=True)
+          (directory / "recipient.asc").write_bytes(recipient)
+          names = ("KEYSTORE_B64", "STORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD", "CERT_SHA256")
+          values = {name: os.environ[name] for name in names}
+          assert all(values.values()), "Missing signing secret"
+          (directory / "signing-backup.json").write_text(json.dumps(values))
+          PYBACKUP
+          mkdir -m 700 "$RUNNER_TEMP/backup-gnupg"
+          gpg --homedir "$RUNNER_TEMP/backup-gnupg" --batch --import "$RUNNER_TEMP/recipient.asc"
+          fingerprint="$(gpg --homedir "$RUNNER_TEMP/backup-gnupg" --batch --with-colons --list-keys | awk -F: '$1 == "fpr" { print $10; exit }')"
+          test -n "$fingerprint"
+          gpg --homedir "$RUNNER_TEMP/backup-gnupg" --batch --yes --trust-model always \
+            --recipient "$fingerprint" --output "$RUNNER_TEMP/android-signing-backup.gpg" \
+            --encrypt "$RUNNER_TEMP/signing-backup.json"
+          rm -f "$RUNNER_TEMP/signing-backup.json"
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: Android-signing-backup-encrypted
+          path: ${{ runner.temp }}/android-signing-backup.gpg
+          retention-days: 1
+          if-no-files-found: error
+      - name: Remove plaintext temporary file
+        if: ${{ always() }}
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/signing-backup.json"
