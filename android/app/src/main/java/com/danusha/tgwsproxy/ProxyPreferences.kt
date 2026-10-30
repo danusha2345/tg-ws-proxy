@@ -24,6 +24,7 @@ data class ProxySettings(
     val fakeTlsDomain: String,
     val maskingUpstream: String,
     val workerTlsOnly: Boolean = false,
+    val cfproxyH2Media: Boolean = true,
 )
 
 class ProxyPreferences(context: Context) {
@@ -34,9 +35,12 @@ class ProxyPreferences(context: Context) {
     init {
         if (!preferences.getBoolean(KEY_ROUTING_MIGRATED, false)) {
             preferences.edit {
-                if (preferences.getString(KEY_WORKER_DOMAINS, "").isNullOrBlank()) {
-                    putString(KEY_WORKER_DOMAINS, DEFAULT_WORKER)
-                    putBoolean(KEY_CFPROXY, false)
+                val previousWorker = preferences.getString(KEY_WORKER_DOMAINS, "").orEmpty().trim()
+                if (previousWorker.equals(DEFAULT_WORKER, ignoreCase = true)) {
+                    putString(KEY_WORKER_DOMAINS, "")
+                    putBoolean(KEY_CFPROXY, true)
+                } else if (!preferences.contains(KEY_CFPROXY)) {
+                    putBoolean(KEY_CFPROXY, true)
                 }
                 putBoolean(KEY_ROUTING_MIGRATED, true)
             }
@@ -60,9 +64,10 @@ class ProxyPreferences(context: Context) {
             port = preferences.getInt(KEY_PORT, DEFAULT_PORT),
             secret = readSecret(),
             poolSize = preferences.getInt(KEY_POOL_SIZE, DEFAULT_POOL_SIZE),
-            fallbackCfproxy = preferences.getBoolean(KEY_CFPROXY, false),
+            fallbackCfproxy = preferences.getBoolean(KEY_CFPROXY, true),
+            cfproxyH2Media = preferences.getBoolean(KEY_CF_H2, true),
             noSecure = preferences.getBoolean(KEY_NO_SECURE, false),
-            workerDomains = preferences.getString(KEY_WORKER_DOMAINS, DEFAULT_WORKER).orEmpty(),
+            workerDomains = preferences.getString(KEY_WORKER_DOMAINS, "").orEmpty(),
             fakeTlsDomain = preferences.getString(KEY_FAKE_TLS, "").orEmpty(),
             maskingUpstream = preferences.getString(KEY_MASKING, "").orEmpty(),
             workerTlsOnly = preferences.getBoolean(KEY_WORKER_TLS_ONLY, false),
@@ -75,6 +80,7 @@ class ProxyPreferences(context: Context) {
             putInt(KEY_PORT, settings.port)
             putInt(KEY_POOL_SIZE, settings.poolSize)
             putBoolean(KEY_CFPROXY, settings.fallbackCfproxy)
+            putBoolean(KEY_CF_H2, settings.cfproxyH2Media)
             putBoolean(KEY_NO_SECURE, settings.noSecure)
             putBoolean(KEY_WORKER_TLS_ONLY, settings.workerTlsOnly)
             putString(KEY_WORKER_DOMAINS, settings.workerDomains.trim())
@@ -90,6 +96,7 @@ class ProxyPreferences(context: Context) {
             .put("secret", settings.secret)
             .put("poolSize", settings.poolSize)
             .put("fallbackCfproxy", settings.fallbackCfproxy)
+            .put("cfproxyH2Media", settings.cfproxyH2Media)
             .put("noSecure", settings.noSecure)
             .put("workerTlsOnly", settings.workerTlsOnly)
             .put(
@@ -164,10 +171,11 @@ class ProxyPreferences(context: Context) {
         private const val KEY_PORT = "port"
         private const val KEY_POOL_SIZE = "pool-size"
         private const val KEY_CFPROXY = "cfproxy"
+        private const val KEY_CF_H2 = "cfproxy-h2-media"
         private const val KEY_NO_SECURE = "no-secure"
         private const val KEY_WORKER_DOMAINS = "worker-domains"
         private const val KEY_WORKER_TLS_ONLY = "worker-tls-only"
-        private const val KEY_ROUTING_MIGRATED = "routing-defaults-v1"
+        private const val KEY_ROUTING_MIGRATED = "routing-defaults-v2"
         private const val DEFAULT_WORKER = "tg-ws-bridge.pipecpriam-ws.workers.dev"
         private const val KEY_FAKE_TLS = "fake-tls"
         private const val KEY_MASKING = "masking"

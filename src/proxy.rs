@@ -19,6 +19,7 @@ use tokio::time::timeout;
 use tracing::{debug, info, warn};
 use url::form_urlencoded;
 
+use crate::cf_h2::{self, H2Connector};
 use crate::client::{ClientReader, ClientWriter};
 use crate::config::{ProxyConfig, tls_config};
 use crate::fake_tls::{
@@ -72,6 +73,7 @@ struct ProxyInner {
     stats: Arc<Stats>,
     pool: WsPool,
     http_relay: HttpRelayConnector,
+    h2: H2Connector,
     connection_limit: Arc<Semaphore>,
     redirect_until: Mutex<HashMap<DcKey, Instant>>,
     dc_fail_until: Mutex<HashMap<DcKey, Instant>>,
@@ -104,6 +106,7 @@ impl Proxy {
                 stats,
                 pool,
                 http_relay: HttpRelayConnector::new()?,
+                h2: H2Connector::new()?,
                 redirect_until: Mutex::new(HashMap::new()),
                 dc_fail_until: Mutex::new(HashMap::new()),
                 ip_fail_until: Mutex::new(HashMap::new()),
@@ -381,6 +384,47 @@ impl Proxy {
             &self.inner.config.secret,
             &relay_init,
         );
+
+        // H2 API uses CF DNS proxying, not Workers. It always uses verified TLS;
+        // disable_secure only controls legacy WebSocket/Worker transports.
+        if !test
+            && client_init.media
+            && self.inner.config.fallback_cfproxy
+            && self.inner.config.cfproxy_h2_media
+        {
+            let domains = self.cf_domains(client_init.dc).await;
+            let attempts = domains.into_iter().map(|base| async move {
+                let host = format!("kws{}.{}", client_init.dc, base);
+                match self.inner.h2.connect(&host).await {
+                    Ok(session) => Some((session, base, host)),
+                    Err(error) => {
+                        debug!(%host, %error, "CF HTTP2 unavailable");
+                        None
+                    }
+                }
+            });
+            if let Some((session, base, host)) =
+                first_available(attempts, 3, Duration::from_secs(8)).await
+            {
+                self.inner
+                    .active_cf_domain
+                    .lock()
+                    .await
+                    .insert(client_init.dc, base);
+                Stats::increment(&self.inner.stats.connections_cfproxy);
+                info!(label=%prepared.label, dc=client_init.dc, media=client_init.media,
+                    route="cloudflare-http2-api", %host, "upstream route connected without Worker");
+                return cf_h2::bridge(
+                    prepared.reader,
+                    prepared.writer,
+                    crypto,
+                    client_init.transport,
+                    session,
+                    Arc::clone(&self.inner.stats),
+                )
+                .await;
+            }
+        }
 
         let target = self.inner.config.dc_redirects.get(&client_init.dc).copied();
         let cloudflare_available = self.inner.config.fallback_cfproxy

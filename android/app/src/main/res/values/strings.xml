@@ -40,8 +40,9 @@
     <string name="secret_hint">Connection key (32 HEX characters)</string>
     <string name="generate_secret">Generate a new key</string>
     <string name="pool_hint">WebSocket pool size</string>
-    <string name="no_secure_label">CF and Worker without TLS (port 80)</string>
-    <string name="cfproxy_label">Cloudflare fallback</string>
+    <string name="no_secure_label">WS and Worker without TLS (port 80)</string>
+    <string name="cf_h2_label">HTTP/2 for media</string>
+    <string name="cfproxy_label">Free Cloudflare route</string>
     <string name="worker_domains_hint">Cloudflare Worker domains (comma or space separated)</string>
     <string name="fake_tls_hint">Fake TLS domain (optional)</string>
     <string name="masking_hint">Masking upstream (optional)</string>
@@ -67,7 +68,7 @@
     <string name="logs_share_title">Share TG WS Proxy log</string>
     <string name="logs_tail">… showing the end of the log …\n%1$s</string>
     <string name="status_dot" translatable="false">●</string>
-    <string name="cf_help">Used when a direct connection is unavailable. Custom Worker domains work independently of this switch.</string>
+    <string name="cf_help">CF domain traffic does not use Workers quota. Manually enabled Workers share the account request quota. HTTP/2 always uses TLS.</string>
     <string name="settings_help">The defaults work for most users. Changes apply the next time you start the proxy.</string>
     <string name="settings_locked">Stop the proxy on the home screen before editing settings.</string>
     <string name="hint_stopped">Start the proxy, then add it to Telegram using the button below.</string>

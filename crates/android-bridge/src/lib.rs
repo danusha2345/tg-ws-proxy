@@ -20,6 +20,8 @@ const DEFAULT_LOG_BACKUPS: usize = 3;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+// Persisted independent network options, not alternative states.
+#[allow(clippy::struct_excessive_bools)]
 struct MobileConfig {
     port: u16,
     secret: String,
@@ -27,6 +29,8 @@ struct MobileConfig {
     pool_size: usize,
     #[serde(default = "default_true")]
     fallback_cfproxy: bool,
+    #[serde(default = "default_true")]
+    cfproxy_h2_media: bool,
     #[serde(default)]
     no_secure: bool,
     #[serde(default)]
@@ -121,6 +125,7 @@ fn build_proxy_config(config: &MobileConfig) -> Result<ProxyConfig> {
         port: config.port,
         pool_size: config.pool_size,
         fallback_cfproxy: config.fallback_cfproxy,
+        cfproxy_h2_media: config.cfproxy_h2_media,
         disable_secure: config.no_secure,
         worker_tls_only: config.worker_tls_only,
         cfproxy_worker_domains: normalize_domains(
@@ -348,6 +353,7 @@ mod tests {
             secret: "00112233445566778899aabbccddeeff".to_owned(),
             pool_size: 2,
             fallback_cfproxy: true,
+            cfproxy_h2_media: true,
             no_secure: false,
             worker_tls_only: false,
             worker_domains: vec!["One.Workers.dev".to_owned(), "two.workers.dev".to_owned()],
@@ -369,12 +375,26 @@ mod tests {
     }
 
     #[test]
+    fn mobile_h2_opt_out_and_empty_worker_list_reach_the_core() {
+        let config: MobileConfig = serde_json::from_value(serde_json::json!({
+            "port":1445,"secret":"0123456789abcdef0123456789abcdef",
+            "cfproxyH2Media":false,"logPath":"unused.log"
+        }))
+        .unwrap();
+        let core = build_proxy_config(&config).unwrap();
+        assert!(!core.cfproxy_h2_media);
+        assert!(core.fallback_cfproxy);
+        assert!(core.cfproxy_worker_domains.is_empty());
+    }
+
+    #[test]
     fn mobile_config_rejects_invalid_secret() {
         let config = MobileConfig {
             port: 1443,
             secret: "short".to_owned(),
             pool_size: 4,
             fallback_cfproxy: true,
+            cfproxy_h2_media: true,
             no_secure: false,
             worker_tls_only: false,
             worker_domains: Vec::new(),

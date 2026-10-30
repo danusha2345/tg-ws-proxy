@@ -1914,6 +1914,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "h2"
+version = "0.4.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef8e5e5a340588f4452631496976cf8636d4a7ecf600239fdc27615d2530bc16"
+dependencies = [
+ "atomic-waker",
+ "bytes",
+ "fnv",
+ "futures-core",
+ "futures-sink",
+ "http",
+ "indexmap",
+ "slab",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2059,6 +2078,7 @@ dependencies = [
  "bytes",
  "futures-channel",
  "futures-core",
+ "h2",
  "http",
  "http-body",
  "httparse",
@@ -3697,6 +3717,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-util",
+ "h2",
  "http",
  "http-body",
  "http-body-util",
@@ -4318,7 +4339,7 @@ dependencies = [
 
 [[package]]
 name = "tg-ws-proxy"
-version = "1.14.1"
+version = "1.15.0"
 dependencies = [
  "aes",
  "anyhow",
@@ -4331,8 +4352,10 @@ dependencies = [
  "fs2",
  "futures-util",
  "getrandom 0.4.3",
+ "h2",
  "hex",
  "hmac",
+ "http",
  "ksni",
  "native-dialog",
  "open",
@@ -4365,7 +4388,7 @@ dependencies = [
 
 [[package]]
 name = "tg-ws-proxy-android"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "jni 0.21.1",
@@ -4497,6 +4520,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "libc",
  "pin-project-lite",
  "tokio",
 ]
