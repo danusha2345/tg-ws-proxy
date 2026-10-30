@@ -4316,7 +4316,7 @@ dependencies = [
 
 [[package]]
 name = "tg-ws-proxy"
-version = "1.14.0"
+version = "1.14.1"
 dependencies = [
  "aes",
  "anyhow",

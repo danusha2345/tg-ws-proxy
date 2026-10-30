@@ -88,3 +88,54 @@ test("destinations, session isolation and idle cleanup are enforced", async (t) 
   assert.equal(hub.sessions.size, 0);
   assert.equal((await hub.fetch(req("down", "&seq=0"))).status, 410);
 });
+
+function rangeRequest(offset, size, ack = 0) {
+  return new Request(`https://worker.test/relay/range?sid=${SID}&offset=${offset}&size=${size}&ack=${ack}`);
+}
+
+test("ranges can be requested out of order and retried with a smaller size", async (t) => {
+  const hub = setup(t);
+  const socket = await open(hub);
+  const data = new Uint8Array(60000).map((_, i) => i % 251);
+  socket.feed(data);
+  const [later, first, smaller] = await Promise.all([
+    hub.fetch(rangeRequest(16384, 8192)),
+    hub.fetch(rangeRequest(0, 32768)),
+    hub.fetch(rangeRequest(0, 8192)),
+  ]);
+  assert.deepEqual(new Uint8Array(await later.arrayBuffer()), data.slice(16384, 24576));
+  assert.deepEqual(new Uint8Array(await first.arrayBuffer()), data.slice(0, 32768));
+  assert.deepEqual(new Uint8Array(await smaller.arrayBuffer()), data.slice(0, 8192));
+  const next = await hub.fetch(rangeRequest(8192, 12288, 8192));
+  assert.deepEqual(new Uint8Array(await next.arrayBuffer()), data.slice(8192, 20480));
+  assert.equal(hub.sessions.get(SID).rangeAck, 8192);
+  assert.equal((await hub.fetch(rangeRequest(0, 8192))).status, 409);
+  assert.equal((await hub.fetch(rangeRequest(8192, 32769, 8192))).status, 400);
+  assert.equal((await hub.fetch(rangeRequest(1000000, 8192, 8192))).status, 409);
+});
+
+test("a future range waiting for data does not block an available prefix", async (t) => {
+  const hub = setup(t);
+  const socket = await open(hub);
+  const future = hub.fetch(rangeRequest(8192, 8192));
+  socket.feed(new Uint8Array([11, 12, 13]));
+  const first = await hub.fetch(rangeRequest(0, 8192));
+  assert.deepEqual(new Uint8Array(await first.arrayBuffer()), new Uint8Array([11, 12, 13]));
+  hub.close(SID);
+  assert.equal((await future).status, 410);
+});
+
+test("EOF reports the byte offset without discarding earlier pending ranges", async (t) => {
+  const hub = setup(t);
+  const socket = await open(hub);
+  const data = new Uint8Array(10000).fill(7);
+  socket.feed(data);
+  socket.close();
+  const end = await hub.fetch(rangeRequest(20000, 8192));
+  assert.equal(end.status, 410);
+  assert.equal(end.headers.get("x-relay-end"), "10000");
+  const first = await hub.fetch(rangeRequest(0, 8192));
+  assert.deepEqual(new Uint8Array(await first.arrayBuffer()), data.slice(0, 8192));
+  const last = await hub.fetch(rangeRequest(8192, 8192, 8192));
+  assert.deepEqual(new Uint8Array(await last.arrayBuffer()), data.slice(8192));
+});
