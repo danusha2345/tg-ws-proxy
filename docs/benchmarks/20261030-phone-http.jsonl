@@ -1,0 +1,96 @@
+{"run": "wide-1", "chunk": 8192, "window": 1, "bytes": 131072, "failures": 0, "completed": 16, "seconds": 3.059, "KiB_s": 41.8}
+{"run": "wide-1", "chunk": 8192, "window": 4, "bytes": 122880, "failures": 1, "completed": 16, "seconds": 3.139, "KiB_s": 38.2}
+{"run": "wide-1", "chunk": 8192, "window": 8, "bytes": 131072, "failures": 0, "completed": 16, "seconds": 0.271, "KiB_s": 471.9}
+{"run": "wide-1", "chunk": 8192, "window": 16, "bytes": 262144, "failures": 0, "completed": 32, "seconds": 0.497, "KiB_s": 514.7}
+{"run": "wide-1", "chunk": 12288, "window": 1, "bytes": 196608, "failures": 0, "completed": 16, "seconds": 3.628, "KiB_s": 52.9}
+{"run": "wide-1", "chunk": 12288, "window": 4, "bytes": 196608, "failures": 0, "completed": 16, "seconds": 0.449, "KiB_s": 427.3}
+{"run": "wide-1", "chunk": 12288, "window": 8, "bytes": 196608, "failures": 0, "completed": 16, "seconds": 0.272, "KiB_s": 706.1}
+{"run": "wide-1", "chunk": 12288, "window": 16, "bytes": 393216, "failures": 0, "completed": 32, "seconds": 0.276, "KiB_s": 1390.8}
+{"run": "wide-1", "chunk": 14336, "window": 1, "bytes": 229376, "failures": 0, "completed": 16, "seconds": 1.741, "KiB_s": 128.6}
+{"run": "wide-1", "chunk": 14336, "window": 4, "bytes": 215040, "failures": 1, "completed": 16, "seconds": 3.352, "KiB_s": 62.6}
+{"run": "wide-1", "chunk": 14336, "window": 8, "bytes": 229376, "failures": 0, "completed": 16, "seconds": 0.287, "KiB_s": 781.1}
+{"run": "wide-1", "chunk": 14336, "window": 16, "bytes": 458752, "failures": 0, "completed": 32, "seconds": 1.321, "KiB_s": 339.2}
+{"run": "wide-1", "chunk": 16384, "window": 1, "bytes": 262144, "failures": 0, "completed": 16, "seconds": 1.523, "KiB_s": 168.1}
+{"run": "wide-1", "chunk": 16384, "window": 4, "bytes": 262144, "failures": 0, "completed": 16, "seconds": 0.484, "KiB_s": 528.8}
+{"run": "wide-1", "chunk": 16384, "window": 8, "bytes": 245760, "failures": 1, "completed": 16, "seconds": 3.073, "KiB_s": 78.1}
+{"run": "wide-1", "chunk": 16384, "window": 16, "bytes": 442368, "failures": 5, "completed": 32, "seconds": 3.141, "KiB_s": 137.5}
+{"run": "wide-1", "chunk": 24576, "window": 1, "bytes": 368640, "failures": 1, "completed": 16, "seconds": 4.609, "KiB_s": 78.1}
+{"run": "wide-1", "chunk": 24576, "window": 4, "bytes": 393216, "failures": 0, "completed": 16, "seconds": 0.437, "KiB_s": 878.4}
+{"run": "wide-1", "chunk": 24576, "window": 8, "bytes": 393216, "failures": 0, "completed": 16, "seconds": 0.293, "KiB_s": 1312.3}
+{"run": "wide-1", "chunk": 24576, "window": 16, "bytes": 761856, "failures": 1, "completed": 32, "seconds": 3.152, "KiB_s": 236.1}
+{"run": "wide-1", "chunk": 32768, "window": 1, "bytes": 524288, "failures": 0, "completed": 16, "seconds": 3.093, "KiB_s": 165.5}
+{"run": "wide-1", "chunk": 32768, "window": 4, "bytes": 524288, "failures": 0, "completed": 16, "seconds": 0.457, "KiB_s": 1120.9}
+{"run": "wide-1", "chunk": 32768, "window": 8, "bytes": 491520, "failures": 1, "completed": 16, "seconds": 3.112, "KiB_s": 154.2}
+{"run": "wide-1", "chunk": 32768, "window": 16, "bytes": 1048576, "failures": 0, "completed": 32, "seconds": 0.273, "KiB_s": 3747.2}
+{"run": "wide-2", "chunk": 8192, "window": 1, "bytes": 131072, "failures": 0, "completed": 16, "seconds": 1.966, "KiB_s": 65.1}
+{"run": "wide-2", "chunk": 8192, "window": 4, "bytes": 131072, "failures": 0, "completed": 16, "seconds": 0.515, "KiB_s": 248.4}
+{"run": "wide-2", "chunk": 8192, "window": 8, "bytes": 131072, "failures": 0, "completed": 16, "seconds": 0.267, "KiB_s": 478.7}
+{"run": "wide-2", "chunk": 8192, "window": 16, "bytes": 262144, "failures": 0, "completed": 32, "seconds": 0.512, "KiB_s": 499.7}
+{"run": "wide-2", "chunk": 12288, "window": 1, "bytes": 196608, "failures": 0, "completed": 16, "seconds": 1.883, "KiB_s": 102.0}
+{"run": "wide-2", "chunk": 12288, "window": 4, "bytes": 184320, "failures": 1, "completed": 16, "seconds": 3.346, "KiB_s": 53.8}
+{"run": "wide-2", "chunk": 12288, "window": 8, "bytes": 196608, "failures": 0, "completed": 16, "seconds": 0.249, "KiB_s": 772.0}
+{"run": "wide-2", "chunk": 12288, "window": 16, "bytes": 393216, "failures": 0, "completed": 32, "seconds": 0.391, "KiB_s": 983.4}
+{"run": "wide-2", "chunk": 14336, "window": 1, "bytes": 229376, "failures": 0, "completed": 16, "seconds": 1.707, "KiB_s": 131.2}
+{"run": "wide-2", "chunk": 14336, "window": 4, "bytes": 229376, "failures": 0, "completed": 16, "seconds": 0.428, "KiB_s": 522.9}
+{"run": "wide-2", "chunk": 14336, "window": 8, "bytes": 229376, "failures": 0, "completed": 16, "seconds": 0.297, "KiB_s": 754.2}
+{"run": "wide-2", "chunk": 14336, "window": 16, "bytes": 401408, "failures": 4, "completed": 32, "seconds": 3.086, "KiB_s": 127.0}
+{"run": "wide-2", "chunk": 16384, "window": 1, "bytes": 262144, "failures": 0, "completed": 16, "seconds": 1.844, "KiB_s": 138.8}
+{"run": "wide-2", "chunk": 16384, "window": 4, "bytes": 262144, "failures": 0, "completed": 16, "seconds": 0.478, "KiB_s": 535.2}
+{"run": "wide-2", "chunk": 16384, "window": 8, "bytes": 245760, "failures": 1, "completed": 16, "seconds": 3.002, "KiB_s": 80.0}
+{"run": "wide-2", "chunk": 16384, "window": 16, "bytes": 507904, "failures": 1, "completed": 32, "seconds": 3.006, "KiB_s": 165.0}
+{"run": "wide-2", "chunk": 24576, "window": 1, "bytes": 393216, "failures": 0, "completed": 16, "seconds": 1.665, "KiB_s": 230.7}
+{"run": "wide-2", "chunk": 24576, "window": 4, "bytes": 393216, "failures": 0, "completed": 16, "seconds": 0.471, "KiB_s": 815.7}
+{"run": "wide-2", "chunk": 24576, "window": 8, "bytes": 393216, "failures": 0, "completed": 16, "seconds": 0.294, "KiB_s": 1307.1}
+{"run": "wide-2", "chunk": 24576, "window": 16, "bytes": 786432, "failures": 0, "completed": 32, "seconds": 0.296, "KiB_s": 2593.9}
+{"run": "wide-2", "chunk": 32768, "window": 1, "bytes": 425984, "failures": 3, "completed": 16, "seconds": 10.516, "KiB_s": 39.6}
+{"run": "wide-2", "chunk": 32768, "window": 4, "bytes": 491520, "failures": 1, "completed": 16, "seconds": 3.141, "KiB_s": 152.8}
+{"run": "wide-2", "chunk": 32768, "window": 8, "bytes": 229376, "failures": 9, "completed": 16, "seconds": 6.016, "KiB_s": 37.2}
+{"run": "wide-2", "chunk": 32768, "window": 16, "bytes": 589824, "failures": 14, "completed": 32, "seconds": 3.247, "KiB_s": 177.4}
+{"run": "large-3s", "chunk": 24576, "window": 4, "bytes": 393216, "failures": 0, "completed": 16, "seconds": 0.575, "KiB_s": 667.3}
+{"run": "large-3s", "chunk": 24576, "window": 8, "bytes": 393216, "failures": 0, "completed": 16, "seconds": 0.449, "KiB_s": 854.4}
+{"run": "large-3s", "chunk": 24576, "window": 16, "bytes": 786432, "failures": 0, "completed": 32, "seconds": 1.213, "KiB_s": 633.2}
+{"run": "large-3s", "chunk": 32768, "window": 4, "bytes": 491520, "failures": 1, "completed": 16, "seconds": 3.22, "KiB_s": 149.0}
+{"run": "large-3s", "chunk": 32768, "window": 8, "bytes": 458752, "failures": 2, "completed": 16, "seconds": 3.208, "KiB_s": 139.7}
+{"run": "large-3s", "chunk": 32768, "window": 16, "bytes": 589824, "failures": 14, "completed": 32, "seconds": 3.331, "KiB_s": 172.9}
+{"run": "large-3s", "chunk": 49152, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "seconds": 6.007, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 49152, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.003, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 49152, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.003, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 65536, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "seconds": 6.004, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 65536, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.003, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 65536, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.008, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 98304, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "seconds": 6.009, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 98304, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.008, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 98304, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.004, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 131072, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "seconds": 6.007, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 131072, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.005, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 131072, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.002, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 262144, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "seconds": 6.017, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 262144, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.003, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 262144, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.005, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 524288, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "seconds": 6.013, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 524288, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.008, "KiB_s": 0.0}
+{"run": "large-3s", "chunk": 524288, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "seconds": 3.005, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 24576, "window": 4, "bytes": 393216, "failures": 0, "completed": 16, "timeouts": 0, "timeout_s": 10, "seconds": 0.55, "KiB_s": 698.5}
+{"run": "large-10s", "chunk": 24576, "window": 8, "bytes": 393216, "failures": 0, "completed": 16, "timeouts": 0, "timeout_s": 10, "seconds": 0.255, "KiB_s": 1507.8}
+{"run": "large-10s", "chunk": 24576, "window": 16, "bytes": 761856, "failures": 1, "completed": 32, "timeouts": 1, "timeout_s": 10, "seconds": 10.008, "KiB_s": 74.3}
+{"run": "large-10s", "chunk": 32768, "window": 4, "bytes": 524288, "failures": 0, "completed": 16, "timeouts": 0, "timeout_s": 10, "seconds": 0.569, "KiB_s": 899.9}
+{"run": "large-10s", "chunk": 32768, "window": 8, "bytes": 524288, "failures": 0, "completed": 16, "timeouts": 0, "timeout_s": 10, "seconds": 0.269, "KiB_s": 1902.2}
+{"run": "large-10s", "chunk": 32768, "window": 16, "bytes": 1015808, "failures": 1, "completed": 32, "timeouts": 1, "timeout_s": 10, "seconds": 10.001, "KiB_s": 99.2}
+{"run": "large-10s", "chunk": 49152, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 20.006, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 49152, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.008, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 49152, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.003, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 65536, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 20.006, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 65536, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.003, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 65536, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.003, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 98304, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 20.004, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 98304, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.005, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 98304, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.004, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 131072, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 20.005, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 131072, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.01, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 131072, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.003, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 262144, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 20.005, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 262144, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.005, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 262144, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.007, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 524288, "window": 4, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 20.008, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 524288, "window": 8, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.01, "KiB_s": 0.0}
+{"run": "large-10s", "chunk": 524288, "window": 16, "bytes": 0, "failures": 8, "completed": 8, "timeouts": 8, "timeout_s": 10, "seconds": 10.002, "KiB_s": 0.0}
