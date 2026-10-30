@@ -40,7 +40,7 @@ class ProxyPreferences(context: Context) {
                     putString(KEY_WORKER_DOMAINS, "")
                     putBoolean(KEY_CFPROXY, true)
                 } else if (!preferences.contains(KEY_CFPROXY)) {
-                    putBoolean(KEY_CFPROXY, true)
+                    putBoolean(KEY_CFPROXY, previousWorker.isBlank())
                 }
                 putBoolean(KEY_ROUTING_MIGRATED, true)
             }

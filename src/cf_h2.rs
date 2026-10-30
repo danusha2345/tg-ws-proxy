@@ -205,7 +205,7 @@ impl H2Session {
             declared.is_none_or(|n| n == data.len() as u64),
             "CF API truncated response"
         );
-        ensure!(data.len() % 4 == 0, "CF API unaligned response");
+        ensure!(data.len().is_multiple_of(4), "CF API unaligned response");
         Ok(Bytes::from(data))
     }
 
@@ -308,7 +308,7 @@ fn strip_padding(mut data: Vec<u8>, transport: Transport) -> Result<Vec<u8>> {
         data.truncate(length);
     }
     ensure!(
-        (24..=MAX_PACKET).contains(&data.len()) && data.len() % 4 == 0,
+        (24..=MAX_PACKET).contains(&data.len()) && data.len().is_multiple_of(4),
         "invalid native packet alignment"
     );
     Ok(data)
@@ -316,7 +316,7 @@ fn strip_padding(mut data: Vec<u8>, transport: Transport) -> Result<Vec<u8>> {
 
 fn encode_reply(body: &[u8], transport: Transport) -> Result<Vec<u8>> {
     ensure!(
-        !body.is_empty() && body.len() <= MAX_PACKET && body.len() % 4 == 0,
+        !body.is_empty() && body.len() <= MAX_PACKET && body.len().is_multiple_of(4),
         "invalid API reply size"
     );
     let mut result = Vec::with_capacity(body.len() + 8);

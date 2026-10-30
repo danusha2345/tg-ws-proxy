@@ -112,6 +112,7 @@ impl DesktopConfig {
         let worker_enabled_was_missing = value
             .as_object()
             .is_some_and(|object| !object.contains_key("cfproxy_worker_enabled"));
+        let cfproxy_was_missing = value.get("cfproxy").is_none();
         let routing_migration_needed = value
             .get("routing_defaults_version")
             .and_then(Value::as_u64)
@@ -132,12 +133,18 @@ impl DesktopConfig {
         if routing_migration_needed {
             // Only remove the old shared builtin endpoint. Custom Workers and
             // explicit disabled routes remain the user's choice.
-            if config.cfproxy_worker_domain == [crate::config::DEFAULT_WORKER_DOMAIN] {
+            if config.cfproxy_worker_domain.len() == 1
+                && config.cfproxy_worker_domain[0]
+                    .eq_ignore_ascii_case(crate::config::DEFAULT_WORKER_DOMAIN)
+            {
                 if config.cfproxy_worker_enabled {
                     config.cfproxy = true;
                 }
                 config.cfproxy_worker_domain.clear();
                 config.cfproxy_worker_enabled = false;
+            } else if cfproxy_was_missing && !config.cfproxy_worker_domain.is_empty() {
+                // A custom Worker-only profile used the previous implicit CF=false default.
+                config.cfproxy = false;
             }
             config.routing_defaults_version = 2;
         }
@@ -477,6 +484,7 @@ mod tests {
         let config = super::DesktopConfig::load_or_create(&path).unwrap();
         assert_eq!(config.cfproxy_worker_domain, ["custom.workers.dev"]);
         assert!(!config.cfproxy_worker_enabled);
+        assert!(!config.cfproxy);
     }
 
     use super::*;

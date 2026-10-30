@@ -384,7 +384,7 @@ mod tests {
         let core = build_proxy_config(&config).unwrap();
         assert!(!core.cfproxy_h2_media);
         assert!(core.fallback_cfproxy);
-        assert!(core.cfproxy_worker_domains.is_empty());
+        assert_eq!(core.cfproxy_worker_domains.len(), 0);
     }
 
     #[test]
