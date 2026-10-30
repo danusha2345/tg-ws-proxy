@@ -536,13 +536,9 @@ async fn download_ranges<W: AsyncWrite + Unpin>(
                 .boxed(),
             );
         }
-        let hol_deadline = in_flight.get(&delivered).map_or_else(
-            || Instant::now() + Duration::from_millis(500),
-            |(_, since)| *since + Duration::from_millis(500),
-        );
         let result = tokio::select! {
             result = requests.next() => result,
-            () = tokio::time::sleep_until(hol_deadline.into()), if !ready.is_empty() && hol_restarts < 2 => {
+            () = sleep(Duration::from_millis(500)), if !ready.is_empty() && hol_restarts < 2 => {
                 if in_flight.get(&delivered).is_some_and(|(_, since)| since.elapsed() >= Duration::from_millis(500)) {
                     // Later ranges arrived, so these bytes already exist on the server.
                     // Cancel the stalled request and retry its byte offset over fresh TCP.
@@ -753,7 +749,7 @@ mod tests {
                     } else if size > CHUNK_BYTES && !reject_large.swap(true, Ordering::Relaxed) {
                         ("503 Unavailable", String::new(), Vec::new())
                     } else {
-                        if offset == 16384 && !slow.swap(true, Ordering::Relaxed) { sleep(Duration::from_millis(800)).await; }
+                        if offset == 16384 && !slow.swap(true, Ordering::Relaxed) { sleep(Duration::from_secs(3)).await; }
                         let length = size.min(TOTAL - offset).min(if offset == 49152 { 3000 } else { size });
                         let body = (offset..offset + length).map(|value| u8::try_from(value % 251).unwrap()).collect();
                         ("200 OK", format!("X-Relay-Offset: {offset}\r\n"), body)
