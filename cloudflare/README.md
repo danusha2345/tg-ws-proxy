@@ -2,7 +2,9 @@
 
 `worker.mjs` поддерживает HTTP chunk relay и legacy WebSocket к Telegram TCP/443.
 HTTP relay сохраняет отдельные TCP-сессии в общем SQLite-backed Durable Object.
-Запросы и ответы ограничены 8 KiB, HTTP-соединения не переиспользуются.
+Legacy relay сохраняет блоки 8 KiB. Новый range relay согласует размер
+до 32 KiB и непрерывный ACK; клиенты загружают диапазоны параллельно,
+HTTP-соединения не переиспользуются. Очередь range relay ограничена 512 KiB.
 Свой сервер и покупка домена не нужны: можно использовать адрес `workers.dev`.
 Worker разрешает только фиксированный список production/test DC Telegram.
 Произвольные IP, имена и порты не поддерживаются.
