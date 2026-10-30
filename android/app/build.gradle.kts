@@ -29,7 +29,7 @@ android {
         applicationId = "com.danusha.tgwsproxy"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
+        versionCode = 13
         versionName = "0.4.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

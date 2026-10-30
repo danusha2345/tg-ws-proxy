@@ -749,7 +749,7 @@ mod tests {
                     } else if size > CHUNK_BYTES && !reject_large.swap(true, Ordering::Relaxed) {
                         ("503 Unavailable", String::new(), Vec::new())
                     } else {
-                        if offset == 16384 && !slow.swap(true, Ordering::Relaxed) { sleep(Duration::from_millis(800)).await; }
+                        if offset == 16384 && !slow.swap(true, Ordering::Relaxed) { sleep(Duration::from_secs(3)).await; }
                         let length = size.min(TOTAL - offset).min(if offset == 49152 { 3000 } else { size });
                         let body = (offset..offset + length).map(|value| u8::try_from(value % 251).unwrap()).collect();
                         ("200 OK", format!("X-Relay-Offset: {offset}\r\n"), body)
