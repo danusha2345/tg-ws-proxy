@@ -113,6 +113,9 @@ jobs:
       - name: Test native window restoration
         run: cargo test --locked --features desktop --lib windows_restore::tests
 
+      - name: Test HTTP relay retry and certificate policy
+        run: cargo test --locked --features desktop --lib http_relay::tests
+
       - name: Smoke-test CLI
         shell: pwsh
         run: .\target\release\tg-ws-proxy.exe --help
