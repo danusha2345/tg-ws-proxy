@@ -1,0 +1,74 @@
+{"run": "single-10s", "scheme": "http", "size": 8192, "exit": 0, "metrics": ["200", "8192", "0.417874", "19603"], "valid": true}
+{"run": "single-10s", "scheme": "http", "size": 24576, "exit": 28, "metrics": ["000", "0", "10.008962", "0"], "valid": false}
+{"run": "single-10s", "scheme": "http", "size": 32768, "exit": 0, "metrics": ["200", "32768", "2.766719", "11843"], "valid": true}
+{"run": "single-10s", "scheme": "http", "size": 65536, "exit": 28, "metrics": ["200", "28956", "10.003697", "2894"], "valid": false}
+{"run": "single-10s", "scheme": "http", "size": 131072, "exit": 28, "metrics": ["200", "34408", "10.003917", "3439"], "valid": false}
+{"run": "single-10s", "scheme": "http", "size": 524288, "exit": 28, "metrics": ["200", "31876", "10.013500", "3183"], "valid": false}
+{"run": "single-10s", "scheme": "https", "size": 8192, "exit": 0, "metrics": ["200", "8192", "1.459528", "5612"], "valid": true}
+{"run": "single-10s", "scheme": "https", "size": 24576, "exit": 28, "metrics": ["200", "22995", "10.007400", "2297"], "valid": false}
+{"run": "single-10s", "scheme": "https", "size": 32768, "exit": 28, "metrics": ["200", "24576", "10.006641", "2455"], "valid": false}
+{"run": "single-10s", "scheme": "https", "size": 65536, "exit": 28, "metrics": ["200", "23251", "10.010608", "2322"], "valid": false}
+{"run": "single-10s", "scheme": "https", "size": 131072, "exit": 28, "metrics": ["200", "24576", "10.014327", "2454"], "valid": false}
+{"run": "single-10s", "scheme": "https", "size": 524288, "exit": 28, "metrics": ["200", "23251", "10.015684", "2321"], "valid": false}
+{"series": "matrix-4s", "scheme": "http", "size": 8192, "window": 4, "completed": 16, "ok": 16, "exit": 0, "seconds_including_ssh": 2.137, "KiB_s_including_ssh": 59.9}
+{"series": "matrix-4s", "scheme": "http", "size": 8192, "window": 8, "completed": 16, "ok": 16, "exit": 0, "seconds_including_ssh": 1.116, "KiB_s_including_ssh": 114.7}
+{"series": "matrix-4s", "scheme": "http", "size": 8192, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.133, "KiB_s_including_ssh": 226.0}
+{"series": "matrix-4s", "scheme": "http", "size": 8192, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.233, "KiB_s_including_ssh": 415.4}
+{"series": "matrix-4s", "scheme": "http", "size": 12288, "window": 4, "completed": 16, "ok": 15, "exit": 28, "seconds_including_ssh": 5.386, "KiB_s_including_ssh": 33.4}
+{"series": "matrix-4s", "scheme": "http", "size": 12288, "window": 8, "completed": 16, "ok": 15, "exit": 28, "seconds_including_ssh": 4.471, "KiB_s_including_ssh": 40.3}
+{"series": "matrix-4s", "scheme": "http", "size": 12288, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.406, "KiB_s_including_ssh": 273.2}
+{"series": "matrix-4s", "scheme": "http", "size": 12288, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.23, "KiB_s_including_ssh": 624.4}
+{"series": "matrix-4s", "scheme": "http", "size": 14336, "window": 4, "completed": 16, "ok": 15, "exit": 28, "seconds_including_ssh": 5.013, "KiB_s_including_ssh": 41.9}
+{"series": "matrix-4s", "scheme": "http", "size": 14336, "window": 8, "completed": 16, "ok": 16, "exit": 0, "seconds_including_ssh": 1.063, "KiB_s_including_ssh": 210.7}
+{"series": "matrix-4s", "scheme": "http", "size": 14336, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.623, "KiB_s_including_ssh": 276.1}
+{"series": "matrix-4s", "scheme": "http", "size": 14336, "window": 32, "completed": 64, "ok": 63, "exit": 28, "seconds_including_ssh": 4.392, "KiB_s_including_ssh": 200.8}
+{"series": "matrix-4s", "scheme": "http", "size": 24576, "window": 4, "completed": 16, "ok": 16, "exit": 0, "seconds_including_ssh": 1.59, "KiB_s_including_ssh": 241.6}
+{"series": "matrix-4s", "scheme": "http", "size": 24576, "window": 8, "completed": 16, "ok": 16, "exit": 0, "seconds_including_ssh": 1.035, "KiB_s_including_ssh": 371.1}
+{"series": "matrix-4s", "scheme": "http", "size": 24576, "window": 16, "completed": 32, "ok": 31, "exit": 28, "seconds_including_ssh": 4.391, "KiB_s_including_ssh": 169.4}
+{"series": "matrix-4s", "scheme": "http", "size": 24576, "window": 32, "completed": 64, "ok": 60, "exit": 28, "seconds_including_ssh": 4.378, "KiB_s_including_ssh": 328.9}
+{"series": "matrix-4s", "scheme": "https", "size": 8192, "window": 4, "completed": 16, "ok": 16, "exit": 0, "seconds_including_ssh": 2.067, "KiB_s_including_ssh": 61.9}
+{"series": "matrix-4s", "scheme": "https", "size": 8192, "window": 8, "completed": 16, "ok": 15, "exit": 28, "seconds_including_ssh": 4.688, "KiB_s_including_ssh": 25.6}
+{"series": "matrix-4s", "scheme": "https", "size": 8192, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.298, "KiB_s_including_ssh": 197.3}
+{"series": "matrix-4s", "scheme": "https", "size": 8192, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.211, "KiB_s_including_ssh": 422.8}
+{"series": "matrix-4s", "scheme": "https", "size": 12288, "window": 4, "completed": 16, "ok": 16, "exit": 0, "seconds_including_ssh": 1.857, "KiB_s_including_ssh": 103.4}
+{"series": "matrix-4s", "scheme": "https", "size": 12288, "window": 8, "completed": 16, "ok": 16, "exit": 0, "seconds_including_ssh": 1.156, "KiB_s_including_ssh": 166.1}
+{"series": "matrix-4s", "scheme": "https", "size": 12288, "window": 16, "completed": 32, "ok": 31, "exit": 28, "seconds_including_ssh": 4.371, "KiB_s_including_ssh": 85.1}
+{"series": "matrix-4s", "scheme": "https", "size": 12288, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.235, "KiB_s_including_ssh": 622.1}
+{"series": "matrix-4s", "scheme": "https", "size": 14336, "window": 4, "completed": 16, "ok": 16, "exit": 0, "seconds_including_ssh": 1.946, "KiB_s_including_ssh": 115.1}
+{"series": "matrix-4s", "scheme": "https", "size": 14336, "window": 8, "completed": 16, "ok": 16, "exit": 0, "seconds_including_ssh": 1.434, "KiB_s_including_ssh": 156.2}
+{"series": "matrix-4s", "scheme": "https", "size": 14336, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.228, "KiB_s_including_ssh": 365.0}
+{"series": "matrix-4s", "scheme": "https", "size": 14336, "window": 32, "completed": 64, "ok": 63, "exit": 28, "seconds_including_ssh": 4.377, "KiB_s_including_ssh": 201.5}
+{"series": "matrix-4s", "scheme": "https", "size": 24576, "window": 4, "completed": 16, "ok": 8, "exit": 28, "seconds_including_ssh": 9.824, "KiB_s_including_ssh": 19.5}
+{"series": "matrix-4s", "scheme": "https", "size": 24576, "window": 8, "completed": 16, "ok": 4, "exit": 28, "seconds_including_ssh": 8.636, "KiB_s_including_ssh": 11.1}
+{"series": "matrix-4s", "scheme": "https", "size": 24576, "window": 16, "completed": 32, "ok": 12, "exit": 28, "seconds_including_ssh": 8.494, "KiB_s_including_ssh": 33.9}
+{"series": "matrix-4s", "scheme": "https", "size": 24576, "window": 32, "completed": 64, "ok": 29, "exit": 28, "seconds_including_ssh": 8.459, "KiB_s_including_ssh": 82.3}
+{"series": "repeat-4s", "run": 1, "scheme": "http", "size": 8192, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.671, "KiB_s_including_ssh": 306.4}
+{"series": "repeat-4s", "run": 1, "scheme": "http", "size": 12288, "window": 16, "completed": 32, "ok": 30, "exit": 28, "seconds_including_ssh": 4.689, "KiB_s_including_ssh": 76.8}
+{"series": "repeat-4s", "run": 1, "scheme": "http", "size": 12288, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.225, "KiB_s_including_ssh": 627.1}
+{"series": "repeat-4s", "run": 1, "scheme": "http", "size": 14336, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.059, "KiB_s_including_ssh": 423.2}
+{"series": "repeat-4s", "run": 1, "scheme": "http", "size": 14336, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 2.423, "KiB_s_including_ssh": 369.8}
+{"series": "repeat-4s", "run": 1, "scheme": "https", "size": 8192, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 2.153, "KiB_s_including_ssh": 237.8}
+{"series": "repeat-4s", "run": 1, "scheme": "https", "size": 12288, "window": 16, "completed": 32, "ok": 29, "exit": 28, "seconds_including_ssh": 5.018, "KiB_s_including_ssh": 69.3}
+{"series": "repeat-4s", "run": 1, "scheme": "https", "size": 12288, "window": 32, "completed": 64, "ok": 63, "exit": 28, "seconds_including_ssh": 4.431, "KiB_s_including_ssh": 170.6}
+{"series": "repeat-4s", "run": 1, "scheme": "https", "size": 14336, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.199, "KiB_s_including_ssh": 373.5}
+{"series": "repeat-4s", "run": 1, "scheme": "https", "size": 14336, "window": 32, "completed": 64, "ok": 48, "exit": 28, "seconds_including_ssh": 4.811, "KiB_s_including_ssh": 139.7}
+{"series": "repeat-4s", "run": 2, "scheme": "http", "size": 8192, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.763, "KiB_s_including_ssh": 290.5}
+{"series": "repeat-4s", "run": 2, "scheme": "http", "size": 12288, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.015, "KiB_s_including_ssh": 378.3}
+{"series": "repeat-4s", "run": 2, "scheme": "http", "size": 12288, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 2.036, "KiB_s_including_ssh": 377.1}
+{"series": "repeat-4s", "run": 2, "scheme": "http", "size": 14336, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.476, "KiB_s_including_ssh": 303.6}
+{"series": "repeat-4s", "run": 2, "scheme": "http", "size": 14336, "window": 32, "completed": 64, "ok": 63, "exit": 28, "seconds_including_ssh": 4.464, "KiB_s_including_ssh": 197.6}
+{"series": "repeat-4s", "run": 2, "scheme": "https", "size": 8192, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.845, "KiB_s_including_ssh": 277.5}
+{"series": "repeat-4s", "run": 2, "scheme": "https", "size": 12288, "window": 16, "completed": 32, "ok": 19, "exit": 28, "seconds_including_ssh": 5.223, "KiB_s_including_ssh": 43.7}
+{"series": "repeat-4s", "run": 2, "scheme": "https", "size": 12288, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 2.251, "KiB_s_including_ssh": 341.1}
+{"series": "repeat-4s", "run": 2, "scheme": "https", "size": 14336, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.45, "KiB_s_including_ssh": 309.0}
+{"series": "repeat-4s", "run": 2, "scheme": "https", "size": 14336, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 2.35, "KiB_s_including_ssh": 381.3}
+{"series": "repeat-4s", "run": 3, "scheme": "http", "size": 8192, "window": 32, "completed": 64, "ok": 61, "exit": 28, "seconds_including_ssh": 4.494, "KiB_s_including_ssh": 108.6}
+{"series": "repeat-4s", "run": 3, "scheme": "http", "size": 12288, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 2.048, "KiB_s_including_ssh": 187.5}
+{"series": "repeat-4s", "run": 3, "scheme": "http", "size": 12288, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.197, "KiB_s_including_ssh": 641.7}
+{"series": "repeat-4s", "run": 3, "scheme": "http", "size": 14336, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.052, "KiB_s_including_ssh": 426.0}
+{"series": "repeat-4s", "run": 3, "scheme": "http", "size": 14336, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.923, "KiB_s_including_ssh": 466.0}
+{"series": "repeat-4s", "run": 3, "scheme": "https", "size": 8192, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 1.675, "KiB_s_including_ssh": 305.7}
+{"series": "repeat-4s", "run": 3, "scheme": "https", "size": 12288, "window": 16, "completed": 32, "ok": 31, "exit": 28, "seconds_including_ssh": 4.394, "KiB_s_including_ssh": 84.7}
+{"series": "repeat-4s", "run": 3, "scheme": "https", "size": 12288, "window": 32, "completed": 64, "ok": 64, "exit": 0, "seconds_including_ssh": 2.354, "KiB_s_including_ssh": 326.3}
+{"series": "repeat-4s", "run": 3, "scheme": "https", "size": 14336, "window": 16, "completed": 32, "ok": 32, "exit": 0, "seconds_including_ssh": 1.662, "KiB_s_including_ssh": 269.5}
+{"series": "repeat-4s", "run": 3, "scheme": "https", "size": 14336, "window": 32, "completed": 64, "ok": 63, "exit": 28, "seconds_including_ssh": 4.379, "KiB_s_including_ssh": 201.4}

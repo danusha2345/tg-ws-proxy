@@ -7,7 +7,11 @@ use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
 use anyhow::{Result, anyhow, bail};
-use futures_util::{FutureExt, StreamExt, future::BoxFuture, stream::FuturesUnordered};
+use futures_util::{
+    FutureExt, StreamExt,
+    future::{AbortHandle, Abortable, BoxFuture},
+    stream::FuturesUnordered,
+};
 use reqwest::{Client, Method, StatusCode};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, DuplexStream, ReadBuf};
 use tokio::sync::Mutex;
@@ -351,6 +355,7 @@ struct DownloadPolicy {
     maximum_window: usize,
     maximum_chunk: usize,
     successes: u32,
+    window_successes: u32,
     idle: u32,
     recent_errors: u32,
     samples: u32,
@@ -365,9 +370,10 @@ impl DownloadPolicy {
         Self {
             chunk: CHUNK_BYTES,
             window: 1,
-            maximum_window: if media { 16 } else { 4 },
+            maximum_window: if media { 32 } else { 4 },
             maximum_chunk,
             successes: 0,
+            window_successes: 0,
             idle: 0,
             recent_errors: 0,
             samples: 0,
@@ -389,12 +395,14 @@ impl DownloadPolicy {
         self.idle = 0;
         if count == requested {
             self.successes += 1;
-            let target = match self.successes {
+            self.window_successes += 1;
+            let target = match self.window_successes {
                 0..=1 => 1,
                 2..=7 => 2,
                 8..=15 => 4,
                 16..=31 => 8,
-                _ => 16,
+                32..=63 => 16,
+                _ => 32,
             };
             self.window = self.window.max(target.min(self.maximum_window));
             if self.successes >= self.grow_after && self.chunk < self.maximum_chunk {
@@ -433,6 +441,7 @@ impl DownloadPolicy {
         }
         self.window = (self.window / 2).max(1);
         self.successes = 0;
+        self.window_successes = 0;
         self.backoffs = (self.backoffs + 1).min(4);
         self.grow_after = 16 << self.backoffs;
         self.last_backoff = Some(Instant::now());
@@ -488,9 +497,24 @@ async fn download_ranges<W: AsyncWrite + Unpin>(
     media: bool,
     limits: RangeLimits,
 ) -> Result<()> {
-    type Pending<'a> = BoxFuture<'a, (u64, usize, Result<Reply>)>;
+    type Pending<'a> = BoxFuture<'a, Option<(u64, usize, Result<Reply>)>>;
     let mut requests: FuturesUnordered<Pending<'_>> = FuturesUnordered::new();
     let mut in_flight = BTreeMap::new();
+    let mut cancellations = HashMap::<u64, Vec<AbortHandle>>::new();
+    let start_request = |offset, size, ack| {
+        let url = format!("{base}/range?sid={sid}&offset={offset}&size={size}&ack={ack}");
+        let (handle, registration) = AbortHandle::new_pair();
+        let future = async move {
+            let fetch =
+                async move { request_bounded(client, Method::GET, &url, &[], 1, size).await };
+            Abortable::new(fetch, registration)
+                .await
+                .ok()
+                .map(|reply| (offset, size, reply))
+        }
+        .boxed();
+        (future, handle)
+    };
     let mut ready = BTreeMap::<u64, Vec<u8>>::new();
     let mut failures = HashMap::<u64, u32>::new();
     let mut policy = DownloadPolicy::new(media, limits.maximum_chunk);
@@ -499,6 +523,12 @@ async fn download_ranges<W: AsyncWrite + Unpin>(
     let mut hol_restarts = 0;
     loop {
         while let Some(data) = ready.remove(&delivered) {
+            if let Some(handles) = cancellations.remove(&delivered) {
+                for handle in handles {
+                    handle.abort();
+                }
+            }
+            in_flight.remove(&delivered);
             writer.write_all(&data).await?;
             delivered += data.len() as u64;
             hol_restarts = 0;
@@ -524,34 +554,35 @@ async fn download_ranges<W: AsyncWrite + Unpin>(
                 size = size.min(4096);
             }
             in_flight.insert(offset, (size, Instant::now()));
-            let url = format!("{base}/range?sid={sid}&offset={offset}&size={size}&ack={delivered}");
-            requests.push(
-                async move {
-                    (
-                        offset,
-                        size,
-                        request_bounded(client, Method::GET, &url, &[], 1, size).await,
-                    )
-                }
-                .boxed(),
-            );
+            let (request, handle) = start_request(offset, size, delivered);
+            cancellations.entry(offset).or_default().push(handle);
+            requests.push(request);
         }
         let result = tokio::select! {
             result = requests.next() => result,
             () = sleep(Duration::from_millis(500)), if !ready.is_empty() && hol_restarts < 2 => {
                 if in_flight.get(&delivered).is_some_and(|(_, since)| since.elapsed() >= Duration::from_millis(500)) {
                     // Later ranges arrived, so these bytes already exist on the server.
-                    // Cancel the stalled request and retry its byte offset over fresh TCP.
-                    requests = FuturesUnordered::new();
-                    in_flight.clear();
+                    // Race one copy of the missing prefix, leaving healthy neighbors alone.
+                    let size = in_flight[&delivered].0;
+                    let (request, handle) = start_request(delivered, size, delivered);
+                    cancellations.entry(delivered).or_default().push(handle);
+                    requests.push(request);
+                    in_flight.insert(delivered, (size, Instant::now()));
                     hol_restarts += 1;
                 }
                 continue;
             }
         };
-        let Some((offset, size, result)) = result else {
+        let Some(result) = result else {
             bail!("relay range scheduler exhausted before EOF");
         };
+        let Some((offset, size, result)) = result else {
+            continue;
+        };
+        if offset < delivered || ready.contains_key(&offset) {
+            continue;
+        }
         in_flight.remove(&offset);
         match result {
             Ok(reply)
@@ -571,6 +602,7 @@ async fn download_ranges<W: AsyncWrite + Unpin>(
                     policy.window = 1;
                     requests = FuturesUnordered::new();
                     in_flight.clear();
+                    cancellations.clear();
                 }
             }
             Ok(reply) if reply.protocol && reply.status == StatusCode::GONE => {
@@ -656,24 +688,33 @@ mod tests {
     #[test]
     fn adaptive_policy_tolerates_sporadic_errors_and_reduces_only_after_a_series() {
         let mut policy = DownloadPolicy::new(true, MAX_RANGE_BYTES);
-        for _ in 0..128 {
+        for _ in 0..192 {
             let size = policy.chunk;
             policy.received(size, size);
         }
-        assert_eq!((policy.chunk, policy.window), (32768, 16));
+        assert_eq!((policy.chunk, policy.window), (32768, 32));
         policy.failed(32768);
         policy.failed(32768);
-        assert_eq!((policy.chunk, policy.window), (32768, 16));
+        assert_eq!((policy.chunk, policy.window), (32768, 32));
         policy.failed(32768);
-        assert_eq!((policy.chunk, policy.window), (24576, 8));
+        assert_eq!((policy.chunk, policy.window), (24576, 16));
         policy.failed(32768); // failure from the old profile cannot reduce the new size
         assert_eq!(policy.chunk, 24576);
     }
 
     #[test]
+    fn chunk_probes_do_not_reset_parallelism_growth() {
+        let mut policy = DownloadPolicy::new(true, MAX_RANGE_BYTES);
+        for _ in 0..64 {
+            policy.received(policy.chunk, policy.chunk);
+        }
+        assert_eq!((policy.chunk, policy.window), (24576, 32));
+    }
+
+    #[test]
     fn adaptive_policy_respects_the_workers_advertised_size() {
         let mut policy = DownloadPolicy::new(true, 14336);
-        for _ in 0..128 {
+        for _ in 0..192 {
             policy.received(policy.chunk, policy.chunk);
         }
         assert_eq!(policy.chunk, 14336);
@@ -682,7 +723,7 @@ mod tests {
     #[test]
     fn isolated_losses_do_not_reduce_a_working_profile() {
         let mut policy = DownloadPolicy::new(true, MAX_RANGE_BYTES);
-        for _ in 0..128 {
+        for _ in 0..192 {
             policy.received(policy.chunk, policy.chunk);
         }
         for _ in 0..12 {
@@ -691,7 +732,7 @@ mod tests {
             for _ in 0..14 {
                 policy.received(policy.chunk, policy.chunk);
             }
-            assert_eq!((policy.chunk, policy.window), (32768, 16));
+            assert_eq!((policy.chunk, policy.window), (32768, 32));
         }
     }
 
@@ -710,6 +751,7 @@ mod tests {
         let maximum = Arc::clone(&peak);
         let slow = Arc::new(AtomicBool::new(false));
         let reject_large = Arc::new(AtomicBool::new(false));
+        let slow_neighbor = Arc::new(AtomicBool::new(false));
         let (stop, mut stopped) = tokio::sync::oneshot::channel();
         let server = tokio::spawn(async move {
             let mut tasks = tokio::task::JoinSet::new();
@@ -724,6 +766,7 @@ mod tests {
                 let peak = Arc::clone(&maximum);
                 let slow = Arc::clone(&slow);
                 let reject_large = Arc::clone(&reject_large);
+                let slow_neighbor = Arc::clone(&slow_neighbor);
                 tasks.spawn(async move {
                     struct Active(Arc<AtomicUsize>);
                     impl Drop for Active { fn drop(&mut self) { self.0.fetch_sub(1, Ordering::Relaxed); } }
@@ -750,6 +793,7 @@ mod tests {
                         ("503 Unavailable", String::new(), Vec::new())
                     } else {
                         if offset == 16384 && !slow.swap(true, Ordering::Relaxed) { sleep(Duration::from_secs(3)).await; }
+                        if offset == 32768 && !slow_neighbor.swap(true, Ordering::Relaxed) { sleep(Duration::from_millis(900)).await; }
                         let length = size.min(TOTAL - offset).min(if offset == 49152 { 3000 } else { size });
                         let body = (offset..offset + length).map(|value| u8::try_from(value % 251).unwrap()).collect();
                         ("200 OK", format!("X-Relay-Offset: {offset}\r\n"), body)
@@ -792,6 +836,11 @@ mod tests {
         assert_eq!(data, expected);
         let trace = trace.lock().unwrap();
         assert!(trace.iter().filter(|(offset, _)| *offset == 16384).count() >= 2);
+        assert_eq!(
+            trace.iter().filter(|(offset, _)| *offset == 32768).count(),
+            1,
+            "repairing an earlier gap must not restart a healthy neighbor"
+        );
         assert!(trace.iter().any(|(_, size)| *size == 12288));
         assert!(peak.load(Ordering::Relaxed) >= 3);
     }
