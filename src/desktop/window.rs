@@ -221,8 +221,11 @@ impl ControlWindow {
             let reveal = self.text("Показать ключ", "Show key");
             ui.checkbox(&mut self.secret_visible, reveal);
             ui.add_space(12.0);
-            let cf = self.text("Резервный маршрут Cloudflare", "Cloudflare fallback");
+            let cf = self.text("Бесплатный маршрут Cloudflare", "Free Cloudflare route");
             ui.checkbox(&mut self.config.cfproxy, cf);
+            let h2 = self.text("HTTP/2 для медиа", "HTTP/2 for media");
+            ui.checkbox(&mut self.config.cfproxy_h2_media, h2);
+            ui.weak(self.text("Worker необязателен; его бесплатная квота общая для аккаунта.", "Workers are optional; their free quota is shared by the account."));
             let worker = self.text(
                 "Использовать свои Cloudflare Worker",
                 "Use custom Cloudflare Workers",
@@ -245,8 +248,8 @@ impl ControlWindow {
                     .desired_width(f32::INFINITY),
             );
             let no_secure = self.text(
-                "CF и Worker без TLS (порт 80)",
-                "CF and Worker without TLS (port 80)",
+                "WS и Worker без TLS (порт 80)",
+                "WS and Worker without TLS (port 80)",
             );
             if ui.checkbox(&mut self.config.no_secure, no_secure).changed() && self.config.no_secure {
                 self.config.worker_tls_only = false;

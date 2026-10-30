@@ -1,3 +1,4 @@
+mod cf_h2;
 mod client;
 mod http_relay;
 

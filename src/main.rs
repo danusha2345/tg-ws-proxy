@@ -21,9 +21,13 @@ use tracing_subscriber::fmt::writer::{BoxMakeWriter, MakeWriterExt};
     about = "Telegram MTProto WebSocket bridge proxy"
 )]
 struct Args {
-    /// Enable the community CF domain pool as an additional fallback.
-    #[arg(long)]
+    /// Enable the free community CF domain pool (H2 API, then WebSocket).
+    #[arg(long, default_value_t = true)]
     cfproxy: bool,
+
+    /// Disable HTTP/2 media transport; keep free CF WebSocket routes.
+    #[arg(long)]
+    no_h2: bool,
 
     /// Disable all Worker routes.
     #[arg(long)]
@@ -182,6 +186,7 @@ async fn main() -> Result<()> {
         .context("--buf-kb is too large")?;
     config.pool_size = args.pool_size;
     config.fallback_cfproxy = args.cfproxy && !args.no_cfproxy;
+    config.cfproxy_h2_media = !args.no_h2;
     config.worker_tls_only = args.worker_tls_only;
     if !args.cfproxy_domain.is_empty() {
         config.cfproxy_domains = normalize_domains(args.cfproxy_domain.iter().map(String::as_str))?;

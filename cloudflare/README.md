@@ -1,5 +1,11 @@
 # Собственный Worker без VPS
 
+Начиная с Rust 1.15.0 / Android 0.5.1 Worker **не включён по умолчанию**:
+используется бесплатный CF-пул, для медиа — HTTP/2 `/api`.
+[Описание и ограничения](../docs/FREE_CF_TRANSPORT_20261030.md).
+Этот каталог сохранён для тех, кто явно выбирает собственный Worker.
+
+
 `worker.mjs` поддерживает HTTP chunk relay и legacy WebSocket к Telegram TCP/443.
 HTTP relay сохраняет отдельные TCP-сессии в общем SQLite-backed Durable Object.
 Legacy relay сохраняет блоки 8 KiB. Новый range relay согласует размер

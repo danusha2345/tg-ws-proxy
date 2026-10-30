@@ -71,6 +71,7 @@ pub struct ProxyConfig {
     pub buffer_size: usize,
     pub pool_size: usize,
     pub fallback_cfproxy: bool,
+    pub cfproxy_h2_media: bool,
     pub cfproxy_domains: Vec<String>,
     pub cfproxy_worker_domains: Vec<String>,
     /// Connect to CF proxy and Worker domains over plain WebSocket on port 80.
@@ -100,12 +101,13 @@ impl Default for ProxyConfig {
             ]),
             buffer_size: 256 * 1024,
             pool_size: 4,
-            fallback_cfproxy: false,
+            fallback_cfproxy: true,
+            cfproxy_h2_media: true,
             cfproxy_domains: DEFAULT_CFPROXY_DOMAINS
                 .iter()
                 .map(ToString::to_string)
                 .collect(),
-            cfproxy_worker_domains: vec![DEFAULT_WORKER_DOMAIN.to_owned()],
+            cfproxy_worker_domains: Vec::new(),
             disable_secure: false,
             worker_tls_only: false,
             fake_tls_domain: None,

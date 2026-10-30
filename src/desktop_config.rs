@@ -30,6 +30,7 @@ pub struct DesktopConfig {
     pub buf_kb: u64,
     pub pool_size: u64,
     pub cfproxy: bool,
+    pub cfproxy_h2_media: bool,
     pub cfproxy_user_domain_enabled: bool,
     #[serde(deserialize_with = "deserialize_domains")]
     pub cfproxy_user_domain: Vec<String>,
@@ -62,15 +63,16 @@ impl Default for DesktopConfig {
             log_max_mb: 5.0,
             buf_kb: 256,
             pool_size: 4,
-            cfproxy: false,
+            cfproxy: true,
+            cfproxy_h2_media: true,
             cfproxy_user_domain_enabled: false,
             cfproxy_user_domain: Vec::new(),
-            cfproxy_worker_enabled: true,
-            cfproxy_worker_domain: vec![crate::config::DEFAULT_WORKER_DOMAIN.to_owned()],
+            cfproxy_worker_enabled: false,
+            cfproxy_worker_domain: Vec::new(),
             force_test_dc: false,
             no_secure: false,
             worker_tls_only: false,
-            routing_defaults_version: 1,
+            routing_defaults_version: 2,
             ws_keepalive_interval: 30,
             language: default_language(),
             appearance: "auto".to_owned(),
@@ -110,7 +112,12 @@ impl DesktopConfig {
         let worker_enabled_was_missing = value
             .as_object()
             .is_some_and(|object| !object.contains_key("cfproxy_worker_enabled"));
-        let routing_migration_needed = value.get("routing_defaults_version").is_none();
+        let cfproxy_was_missing = value.get("cfproxy").is_none();
+        let routing_migration_needed = value
+            .get("routing_defaults_version")
+            .and_then(Value::as_u64)
+            .unwrap_or(0)
+            < 2;
         let worker_domains_were_missing = value.get("cfproxy_worker_domain").is_none();
         let mut config: Self = serde_json::from_value(value)
             .with_context(|| format!("invalid config schema in {}", path.display()))?;
@@ -123,13 +130,23 @@ impl DesktopConfig {
         if worker_enabled_was_missing {
             config.cfproxy_worker_enabled = !config.cfproxy_worker_domain.is_empty();
         }
-        if routing_migration_needed
-            && config.cfproxy_worker_domain.is_empty()
-            && !config.cfproxy_user_domain_enabled
-        {
-            config.cfproxy_worker_domain = vec![crate::config::DEFAULT_WORKER_DOMAIN.to_owned()];
-            config.cfproxy_worker_enabled = true;
-            config.cfproxy = false;
+        if routing_migration_needed {
+            // Only remove the old shared builtin endpoint. Custom Workers and
+            // explicit disabled routes remain the user's choice.
+            if config.cfproxy_worker_domain.len() == 1
+                && config.cfproxy_worker_domain[0]
+                    .eq_ignore_ascii_case(crate::config::DEFAULT_WORKER_DOMAIN)
+            {
+                if config.cfproxy_worker_enabled {
+                    config.cfproxy = true;
+                }
+                config.cfproxy_worker_domain.clear();
+                config.cfproxy_worker_enabled = false;
+            } else if cfproxy_was_missing && !config.cfproxy_worker_domain.is_empty() {
+                // A custom Worker-only profile used the previous implicit CF=false default.
+                config.cfproxy = false;
+            }
+            config.routing_defaults_version = 2;
         }
         config.validate()?;
         #[cfg(unix)]
@@ -197,6 +214,7 @@ impl DesktopConfig {
             pool_size: usize::try_from(self.pool_size)
                 .context("pool_size does not fit this platform")?,
             fallback_cfproxy: self.cfproxy,
+            cfproxy_h2_media: self.cfproxy_h2_media,
             force_test_dc: self.force_test_dc,
             disable_secure: self.no_secure,
             worker_tls_only: self.worker_tls_only,
@@ -365,7 +383,7 @@ fn normalize_domains(values: impl IntoIterator<Item = String>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn legacy_empty_worker_migrates_once_and_later_opt_out_is_preserved() {
+    fn legacy_empty_worker_stays_disabled_and_later_opt_out_is_preserved() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("config.json");
         let secret = "0123456789abcdef0123456789abcdef";
@@ -380,17 +398,14 @@ mod tests {
         .unwrap();
         let mut config = super::DesktopConfig::load_or_create(&path).unwrap();
         assert_eq!(config.secret, secret);
-        assert!(config.cfproxy_worker_enabled);
-        assert!(!config.cfproxy);
-        assert_eq!(
-            config.cfproxy_worker_domain,
-            [crate::config::DEFAULT_WORKER_DOMAIN]
-        );
-        config.cfproxy_worker_enabled = false;
-        config.cfproxy_worker_domain.clear();
+        assert!(!config.cfproxy_worker_enabled);
+        assert!(config.cfproxy);
+        assert!(config.cfproxy_worker_domain.is_empty());
+        config.cfproxy = false;
         config.save_atomic(&path).unwrap();
         let loaded = super::DesktopConfig::load_or_create(&path).unwrap();
         assert!(!loaded.cfproxy_worker_enabled);
+        assert!(!loaded.cfproxy);
         assert!(
             loaded
                 .to_proxy_config()
@@ -398,6 +413,58 @@ mod tests {
                 .cfproxy_worker_domains
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn shared_builtin_worker_switches_to_free_route_once_without_changing_secret_or_port() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.json");
+        let secret = "0123456789abcdef0123456789abcdef";
+        std::fs::write(
+            &path,
+            serde_json::json!({
+                "secret":secret,"port":1445,"cfproxy":false,
+                "cfproxy_worker_enabled":true,"routing_defaults_version":1,
+                "cfproxy_worker_domain":[crate::config::DEFAULT_WORKER_DOMAIN]
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let mut config = super::DesktopConfig::load_or_create(&path).unwrap();
+        assert_eq!(config.secret, secret);
+        assert_eq!(config.port, 1445);
+        assert!(config.cfproxy);
+        assert!(!config.cfproxy_worker_enabled);
+        assert!(config.cfproxy_worker_domain.is_empty());
+        assert_eq!(config.routing_defaults_version, 2);
+        // An explicit Worker opt-in after migration remains explicit and must not be reset.
+        config.cfproxy_worker_domain = vec![crate::config::DEFAULT_WORKER_DOMAIN.to_owned()];
+        config.cfproxy_worker_enabled = true;
+        config.save_atomic(&path).unwrap();
+        let loaded = super::DesktopConfig::load_or_create(&path).unwrap();
+        assert!(loaded.cfproxy_worker_enabled);
+        assert_eq!(loaded.cfproxy_worker_domain, config.cfproxy_worker_domain);
+    }
+
+    #[test]
+    fn upstream_h2_opt_out_survives_free_route_migration() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.json");
+        std::fs::write(
+            &path,
+            serde_json::json!({
+                "secret":"0123456789abcdef0123456789abcdef","cfproxy_h2_media":false,
+                "cfproxy_worker_domain":[crate::config::DEFAULT_WORKER_DOMAIN],
+                "cfproxy_worker_enabled":true,"routing_defaults_version":1
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let config = super::DesktopConfig::load_or_create(&path).unwrap();
+        let core = config.to_proxy_config().unwrap();
+        assert!(!core.cfproxy_h2_media);
+        assert!(core.fallback_cfproxy);
+        assert!(core.cfproxy_worker_domains.is_empty());
     }
 
     #[test]
@@ -417,6 +484,7 @@ mod tests {
         let config = super::DesktopConfig::load_or_create(&path).unwrap();
         assert_eq!(config.cfproxy_worker_domain, ["custom.workers.dev"]);
         assert!(!config.cfproxy_worker_enabled);
+        assert!(!config.cfproxy);
     }
 
     use super::*;
