@@ -1,0 +1,12 @@
+name = "tg-ws-bridge"
+main = "worker.mjs"
+compatibility_date = "2026-10-30"
+workers_dev = true
+
+[[durable_objects.bindings]]
+name = "RELAY"
+class_name = "RelayHub"
+
+[[migrations]]
+tag = "relay-v1"
+new_sqlite_classes = ["RelayHub"]

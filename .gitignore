@@ -31,3 +31,9 @@ Desktop.ini
 .DS_Store
 
 /icon.icns
+
+# Shared Android build outputs in colocated workspaces
+/android/.gradle/
+/android/**/build/
+/android/app/src/main/jniLibs/
+/android/local.properties

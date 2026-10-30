@@ -33,6 +33,7 @@ pub const MAX_SOCKET_BUFFER_SIZE: usize = 16 * 1024 * 1024;
 pub const MAX_POOL_SIZE: usize = 128;
 pub const MAX_WS_FRAME_SIZE: usize = 64 * 1024 * 1024;
 pub const MAX_CONNECTIONS: usize = 65_536;
+pub const DEFAULT_WORKER_DOMAIN: &str = "tg-ws-bridge.pipecpriam-ws.workers.dev";
 
 pub const DEFAULT_CFPROXY_DOMAINS: &[&str] = &[
     "pclead.co.uk",
@@ -74,6 +75,8 @@ pub struct ProxyConfig {
     pub cfproxy_worker_domains: Vec<String>,
     /// Connect to CF proxy and Worker domains over plain WebSocket on port 80.
     pub disable_secure: bool,
+    /// Forbid automatic HTTP/80 recovery for the chunk relay.
+    pub worker_tls_only: bool,
     pub fake_tls_domain: Option<String>,
     pub masking_upstream: Option<String>,
     pub proxy_protocol: bool,
@@ -97,13 +100,14 @@ impl Default for ProxyConfig {
             ]),
             buffer_size: 256 * 1024,
             pool_size: 4,
-            fallback_cfproxy: true,
+            fallback_cfproxy: false,
             cfproxy_domains: DEFAULT_CFPROXY_DOMAINS
                 .iter()
                 .map(ToString::to_string)
                 .collect(),
-            cfproxy_worker_domains: Vec::new(),
+            cfproxy_worker_domains: vec![DEFAULT_WORKER_DOMAIN.to_owned()],
             disable_secure: false,
+            worker_tls_only: false,
             fake_tls_domain: None,
             masking_upstream: None,
             proxy_protocol: false,
@@ -148,6 +152,9 @@ impl ProxyConfig {
     }
 
     pub fn validate(&self) -> Result<()> {
+        if self.disable_secure && self.worker_tls_only {
+            bail!("Worker TLS-only mode cannot be combined with no-secure");
+        }
         if self.host.trim().is_empty() {
             bail!("listen host cannot be empty");
         }

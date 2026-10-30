@@ -1,6 +1,6 @@
 [package]
 name = "tg-ws-proxy"
-version = "1.13.1"
+version = "1.14.0"
 edition = "2024"
 rust-version = "1.89"
 description = "Telegram Desktop WebSocket bridge proxy"
@@ -43,7 +43,6 @@ desktop = [
     "dep:ksni",
     "dep:native-dialog",
     "dep:open",
-    "dep:reqwest",
     "dep:semver",
     "dep:serde",
     "dep:serde_json",
@@ -68,7 +67,7 @@ getrandom = "0.4.3"
 hex = "0.4.3"
 hmac = "0.13.0"
 open = { version = "5.4.3", optional = true }
-reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls-no-provider", "stream"], optional = true }
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls-no-provider", "stream"] }
 rustls = { version = "0.23.44", default-features = false, features = ["logging", "ring", "std", "tls12"] }
 serde = { version = "1.0.229", features = ["derive"], optional = true }
 serde_json = { version = "1.0.151", optional = true }
