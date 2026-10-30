@@ -617,6 +617,7 @@ impl Proxy {
                     &relay_init,
                     self.inner.config.disable_secure,
                     self.inner.config.worker_tls_only,
+                    client_init.media,
                 )
                 .await
             {
@@ -1054,6 +1055,9 @@ async fn bridge_tcp<T>(
 where
     T: AsyncRead + AsyncWrite + Unpin + Send,
 {
+    let start = Instant::now();
+    let mut upload_bytes = 0_u64;
+    let mut download_bytes = 0_u64;
     let (mut telegram_reader, mut telegram_writer) = tokio::io::split(telegram);
     let mut upstream_crypto = crypto.upstream;
     let mut downstream_crypto = crypto.downstream;
@@ -1067,6 +1071,7 @@ where
                 return io::Result::Ok(());
             }
             Stats::add(&stats.bytes_up, read);
+            upload_bytes += read as u64;
             let data = &mut buffer[..read];
             upstream_crypto.client_decrypt.apply_keystream(data);
             upstream_crypto.telegram_encrypt.apply_keystream(data);
@@ -1081,16 +1086,20 @@ where
                 return io::Result::Ok(());
             }
             Stats::add(&stats.bytes_down, read);
+            download_bytes += read as u64;
             let data = &mut buffer[..read];
             downstream_crypto.telegram_decrypt.apply_keystream(data);
             downstream_crypto.client_encrypt.apply_keystream(data);
             client.writer.write_all(data).await?;
         }
     };
-    let result = tokio::select! {
-        result = upload => result,
-        result = download => result,
+    let (result, ended_by) = tokio::select! {
+        result = upload => (result, "client-upload"),
+        result = download => (result, "upstream-download"),
     };
+    info!(label = %client.label, ended_by, upload_bytes, download_bytes,
+        elapsed_seconds = start.elapsed().as_secs_f64(), error = ?result.as_ref().err(),
+        "stream session closed");
     let _ = client.writer.shutdown().await;
     result.map_err(Into::into)
 }
