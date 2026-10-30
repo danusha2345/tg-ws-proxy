@@ -52,6 +52,7 @@ class MainActivity : Activity() {
     private lateinit var poolInput: EditText
     private lateinit var cfproxySwitch: Switch
     private lateinit var noSecureSwitch: Switch
+    private lateinit var workerTlsOnlySwitch: Switch
     private lateinit var workerDomainsInput: EditText
     private lateinit var fakeTlsInput: EditText
     private lateinit var maskingInput: EditText
@@ -173,6 +174,7 @@ class MainActivity : Activity() {
         poolInput = findViewById(R.id.poolInput)
         cfproxySwitch = findViewById(R.id.cfproxySwitch)
         noSecureSwitch = findViewById(R.id.noSecureSwitch)
+        workerTlsOnlySwitch = findViewById(R.id.workerTlsOnlySwitch)
         workerDomainsInput = findViewById(R.id.workerDomainsInput)
         fakeTlsInput = findViewById(R.id.fakeTlsInput)
         maskingInput = findViewById(R.id.maskingInput)
@@ -180,6 +182,12 @@ class MainActivity : Activity() {
     }
 
     private fun bindActions() {
+        workerTlsOnlySwitch.setOnCheckedChangeListener { _, checked ->
+            if (checked) noSecureSwitch.isChecked = false
+        }
+        noSecureSwitch.setOnCheckedChangeListener { _, checked ->
+            if (checked) workerTlsOnlySwitch.isChecked = false
+        }
         findViewById<Button>(R.id.settingsButton).setOnClickListener { showSettings(!settingsVisible) }
         findViewById<Button>(R.id.revealSecretButton).setOnClickListener {
             secretVisible = !secretVisible
@@ -232,6 +240,7 @@ class MainActivity : Activity() {
         poolInput.setText(getString(R.string.integer_value, settings.poolSize))
         cfproxySwitch.isChecked = settings.fallbackCfproxy
         noSecureSwitch.isChecked = settings.noSecure
+        workerTlsOnlySwitch.isChecked = settings.workerTlsOnly
         workerDomainsInput.setText(settings.workerDomains)
         fakeTlsInput.setText(settings.fakeTlsDomain)
         maskingInput.setText(settings.maskingUpstream)
@@ -271,6 +280,7 @@ class MainActivity : Activity() {
                 poolSize = pool.toInt(),
                 fallbackCfproxy = cfproxySwitch.isChecked,
                 noSecure = noSecureSwitch.isChecked,
+                workerTlsOnly = workerTlsOnlySwitch.isChecked,
                 workerDomains = workerDomains,
                 fakeTlsDomain = fakeTlsInput.text.toString(),
                 maskingUpstream = maskingInput.text.toString(),
@@ -303,7 +313,7 @@ class MainActivity : Activity() {
         for (id in listOf(R.id.telegramButton, R.id.copyButton)) {
             findViewById<Button>(id).isEnabled = status.state == "running" && !status.telegramUrl.isNullOrBlank()
         }
-        for (view in listOf(portInput, secretInput, poolInput, cfproxySwitch, noSecureSwitch, workerDomainsInput, fakeTlsInput, maskingInput,
+        for (view in listOf(portInput, secretInput, poolInput, cfproxySwitch, noSecureSwitch, workerTlsOnlySwitch, workerDomainsInput, fakeTlsInput, maskingInput,
             findViewById<Button>(R.id.generateButton), findViewById<Button>(R.id.saveButton))) {
             view.isEnabled = !status.isActive
             view.alpha = if (status.isActive) 0.55f else 1f

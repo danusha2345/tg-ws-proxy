@@ -26,6 +26,7 @@ jobs:
       - name: Install Rust 1.89.0
         uses: dtolnay/rust-toolchain@b4f984c1e7daae8e175614de3e73a8411a20333c
         with:
+          toolchain: "1.89.0"
           components: rustfmt, clippy
 
       - name: Restore Cargo cache
@@ -35,6 +36,9 @@ jobs:
           cache-all-crates: false
           cache-on-failure: false
           save-if: ${{ github.event_name == 'push' }}
+
+      - name: Test Worker relay protocol
+        run: node --test cloudflare/relay.test.mjs
 
       - name: Check formatting
         run: cargo fmt --all -- --check

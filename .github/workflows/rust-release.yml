@@ -52,6 +52,7 @@ jobs:
       - name: Install Rust 1.89.0
         uses: dtolnay/rust-toolchain@b4f984c1e7daae8e175614de3e73a8411a20333c
         with:
+          toolchain: "1.89.0"
           components: rustfmt, clippy
 
       - name: Restore Cargo cache
@@ -60,6 +61,9 @@ jobs:
           shared-key: release-verify
           cache-all-crates: false
           cache-on-failure: false
+
+      - name: Test Worker relay protocol
+        run: node --test cloudflare/relay.test.mjs
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -93,6 +97,8 @@ jobs:
 
       - name: Install Rust 1.89.0
         uses: dtolnay/rust-toolchain@b4f984c1e7daae8e175614de3e73a8411a20333c
+        with:
+          toolchain: "1.89.0"
 
       - name: Restore Cargo cache
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
@@ -178,6 +184,7 @@ jobs:
       - name: Install Rust 1.89.0
         uses: dtolnay/rust-toolchain@b4f984c1e7daae8e175614de3e73a8411a20333c
         with:
+          toolchain: "1.89.0"
           targets: ${{ matrix.musl_target }}
 
       - name: Build GNU CLI and tray
@@ -271,6 +278,7 @@ jobs:
       - name: Install Rust 1.89.0
         uses: dtolnay/rust-toolchain@b4f984c1e7daae8e175614de3e73a8411a20333c
         with:
+          toolchain: "1.89.0"
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Restore Cargo cache
@@ -384,13 +392,17 @@ jobs:
 
           ## Что нового
 
-          - исправлена ошибка маршрутизации, из-за которой Telegram мог
-            показывать предупреждение о неверных настройках и отключать прокси;
-          - обычные MTProto-соединения больше не направляются на media-домены
-            \`kwsN-1\`, отвергающие обычный DH handshake кодом \`-444\`;
-          - media-маршруты, WebSocket-пул и резервные CF/Worker/TCP маршруты сохранены;
-          - добавлены регрессионные проверки выбора маршрута и отдельные
-            live-проверки req_DH_params на DC2/DC4 без аккаунта и сообщений.
+          - встроенный Cloudflare Worker используется по умолчанию, свой VPS не нужен;
+          - добавлен HTTP chunk relay: запросы до 8 KiB сохраняют TCP-сессию Telegram
+            внутри Durable Object и устраняют зависание медиа при ограничении длинных
+            соединений после первых 16–32 KiB;
+          - повторы upload/download защищены последовательностями и подтверждениями;
+          - при транспортном таймауте TLS возможен переход на HTTP/80;
+            режим «Worker: только TLS» запрещает его, ошибки сертификатов не обходятся;
+          - старые пустые Worker-настройки мигрируют автоматически; собственные
+            домены, port и secret сохраняются;
+          - CF fallback ограничен общим бюджетом 20 секунд, задержка восстановления
+            WS-пула и IP cooldown ограничены минутой.
 
           ## Сборки
 

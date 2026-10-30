@@ -1,6 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources xmlns:ns0="http://schemas.android.com/tools" ns0:locale="en">
     <string name="app_name">TG WS Proxy</string>
+    <string name="worker_tls_only">Worker: TLS only (disable automatic port 80 recovery)</string>
     <string name="app_summary">Telegram through a local proxy</string>
     <string name="status_stopped">Stopped</string>
     <string name="status_starting">Starting…</string>

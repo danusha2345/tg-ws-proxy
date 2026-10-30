@@ -21,6 +21,17 @@ use tracing_subscriber::fmt::writer::{BoxMakeWriter, MakeWriterExt};
     about = "Telegram MTProto WebSocket bridge proxy"
 )]
 struct Args {
+    /// Enable the community CF domain pool as an additional fallback.
+    #[arg(long)]
+    cfproxy: bool,
+
+    /// Disable all Worker routes.
+    #[arg(long)]
+    no_worker: bool,
+
+    /// Forbid HTTP/80 recovery for the chunk relay.
+    #[arg(long)]
+    worker_tls_only: bool,
     #[arg(long, default_value_t = 1443, env = "TG_WS_PROXY_PORT")]
     port: u16,
 
@@ -170,13 +181,18 @@ async fn main() -> Result<()> {
         .checked_mul(1024)
         .context("--buf-kb is too large")?;
     config.pool_size = args.pool_size;
-    config.fallback_cfproxy = !args.no_cfproxy;
+    config.fallback_cfproxy = args.cfproxy && !args.no_cfproxy;
+    config.worker_tls_only = args.worker_tls_only;
     if !args.cfproxy_domain.is_empty() {
         config.cfproxy_domains = normalize_domains(args.cfproxy_domain.iter().map(String::as_str))?;
     }
     config.disable_secure = args.no_secure;
-    config.cfproxy_worker_domains =
-        normalize_domains(args.cfproxy_worker_domain.iter().map(String::as_str))?;
+    if args.no_worker {
+        config.cfproxy_worker_domains.clear();
+    } else if !args.cfproxy_worker_domain.is_empty() {
+        config.cfproxy_worker_domains =
+            normalize_domains(args.cfproxy_worker_domain.iter().map(String::as_str))?;
+    }
     config.fake_tls_domain = args
         .fake_tls_domain
         .map(|value| value.trim().to_ascii_lowercase())

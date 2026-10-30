@@ -30,6 +30,8 @@ struct MobileConfig {
     #[serde(default)]
     no_secure: bool,
     #[serde(default)]
+    worker_tls_only: bool,
+    #[serde(default)]
     worker_domains: Vec<String>,
     #[serde(default)]
     fake_tls_domain: Option<String>,
@@ -120,6 +122,7 @@ fn build_proxy_config(config: &MobileConfig) -> Result<ProxyConfig> {
         pool_size: config.pool_size,
         fallback_cfproxy: config.fallback_cfproxy,
         disable_secure: config.no_secure,
+        worker_tls_only: config.worker_tls_only,
         cfproxy_worker_domains: normalize_domains(
             config.worker_domains.iter().map(String::as_str),
         )?,
@@ -346,6 +349,7 @@ mod tests {
             pool_size: 2,
             fallback_cfproxy: true,
             no_secure: false,
+            worker_tls_only: false,
             worker_domains: vec!["One.Workers.dev".to_owned(), "two.workers.dev".to_owned()],
             fake_tls_domain: None,
             masking_upstream: None,
@@ -372,6 +376,7 @@ mod tests {
             pool_size: 4,
             fallback_cfproxy: true,
             no_secure: false,
+            worker_tls_only: false,
             worker_domains: Vec::new(),
             fake_tls_domain: None,
             masking_upstream: None,

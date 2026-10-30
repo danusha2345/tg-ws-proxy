@@ -8,9 +8,10 @@ use std::time::{Duration, Instant, SystemTime};
 
 use anyhow::{Context, Result, anyhow, bail};
 use ctr::cipher::StreamCipher;
+use futures_util::{StreamExt, stream};
 use rustls::ClientConfig;
 use socket2::SockRef;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{Mutex, Semaphore};
 use tokio::task::JoinSet;
@@ -23,6 +24,7 @@ use crate::config::{ProxyConfig, tls_config};
 use crate::fake_tls::{
     FakeTlsReader, FakeTlsWriter, TLS_RECORD_HANDSHAKE, build_server_hello, verify_client_hello,
 };
+use crate::http_relay::HttpRelayConnector;
 use crate::mtproto::{
     ClientInit, HANDSHAKE_LEN, MessageSplitter, build_crypto_context, generate_relay_init,
     parse_client_init,
@@ -34,7 +36,9 @@ use crate::websocket::{RawWebSocket, WebSocketError};
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const DC_FAILURE_COOLDOWN: Duration = Duration::from_secs(60);
-const IP_FAILURE_COOLDOWN: Duration = Duration::from_secs(3600);
+const IP_FAILURE_COOLDOWN: Duration = Duration::from_secs(60);
+const CF_CONNECT_BUDGET: Duration = Duration::from_secs(20);
+const CF_CONNECT_CONCURRENCY: usize = 4;
 const REDIRECT_COOLDOWN: Duration = Duration::from_secs(600);
 const FAKE_TLS_REPLAY_WINDOW: Duration = Duration::from_secs(240);
 const MAX_FAKE_TLS_REPLAY_ENTRIES: usize = 65_536;
@@ -67,6 +71,7 @@ struct ProxyInner {
     tls_config: Arc<ClientConfig>,
     stats: Arc<Stats>,
     pool: WsPool,
+    http_relay: HttpRelayConnector,
     connection_limit: Arc<Semaphore>,
     redirect_until: Mutex<HashMap<DcKey, Instant>>,
     dc_fail_until: Mutex<HashMap<DcKey, Instant>>,
@@ -98,6 +103,7 @@ impl Proxy {
                 tls_config,
                 stats,
                 pool,
+                http_relay: HttpRelayConnector::new()?,
                 redirect_until: Mutex::new(HashMap::new()),
                 dc_fail_until: Mutex::new(HashMap::new()),
                 ip_fail_until: Mutex::new(HashMap::new()),
@@ -562,11 +568,16 @@ impl Proxy {
         let mut crypto = Some(crypto);
         let mut workers = self.inner.config.cfproxy_worker_domains.clone();
         shuffle(&mut workers);
+        let legacy_workers: Vec<_> = workers
+            .iter()
+            .filter(|domain| domain.as_str() != crate::config::DEFAULT_WORKER_DOMAIN)
+            .cloned()
+            .collect();
         if !test
             && let Some((websocket, worker)) = self
                 .inner
                 .pool
-                .get_worker(client_init.dc, fallback_ip, workers.clone())
+                .get_worker(client_init.dc, fallback_ip, legacy_workers)
                 .await
         {
             if let Err(error) = websocket.sender.send_binary(&relay_init).await {
@@ -597,6 +608,40 @@ impl Proxy {
             }
         }
         for worker in workers {
+            match self
+                .inner
+                .http_relay
+                .open(
+                    &worker,
+                    fallback_ip,
+                    &relay_init,
+                    self.inner.config.disable_secure,
+                    self.inner.config.worker_tls_only,
+                )
+                .await
+            {
+                Ok(Some(stream)) => {
+                    Stats::increment(&self.inner.stats.connections_cfproxy);
+                    info!(
+                        label = %prepared.as_ref().expect("session is available").label,
+                        dc = client_init.dc, media = client_init.media,
+                        route = "cloudflare-http-relay", domain = %worker,
+                        "upstream route connected"
+                    );
+                    return bridge_tcp(
+                        prepared.take().expect("session consumed once"),
+                        stream,
+                        crypto.take().expect("crypto consumed once"),
+                        Arc::clone(&self.inner.stats),
+                    )
+                    .await;
+                }
+                Ok(None) => {} // Совместимость со старым Worker /apiws.
+                Err(error) => {
+                    warn!(%worker, %error, "Worker HTTP relay unavailable");
+                    continue;
+                }
+            }
             let path = form_urlencoded::Serializer::new(String::new())
                 .append_pair("dst", &fallback_ip.to_string())
                 .append_pair("dc", &client_init.dc.to_string())
@@ -650,70 +695,101 @@ impl Proxy {
 
         if self.inner.config.fallback_cfproxy && !test {
             let domains = self.cf_domains(client_init.dc).await;
-            for base_domain in domains {
-                let domain = format!("kws{}.{}", client_init.dc, base_domain);
-                match self
-                    .connect_websocket(
-                        &domain,
-                        &domain,
-                        None,
-                        "/apiws",
-                        CONNECT_TIMEOUT,
-                        true,
-                        !self.inner.config.disable_secure,
-                    )
-                    .await
-                {
-                    Ok(websocket) => {
-                        if let Err(error) = websocket.sender.send_binary(&relay_init).await {
-                            debug!(%domain, %error, "CF WebSocket failed before client data");
-                            websocket.close().await;
-                            continue;
-                        }
-                        self.inner
-                            .active_cf_domain
-                            .lock()
-                            .await
-                            .insert(client_init.dc, base_domain);
-                        Stats::increment(&self.inner.stats.connections_cfproxy);
-                        info!(
-                            label = %prepared.as_ref().expect("session is available").label,
-                            dc = client_init.dc,
-                            media = client_init.media,
-                            route = "cloudflare-proxy",
-                            domain = %domain,
-                            "upstream route connected"
-                        );
-                        let splitter = MessageSplitter::new(
-                            &relay_init,
-                            client_init.transport,
-                            self.inner.config.max_ws_frame_size,
-                        );
-                        bridge_websocket(
-                            prepared.take().expect("session consumed once"),
-                            websocket,
-                            crypto.take().expect("crypto consumed once"),
-                            Some(splitter),
-                            Arc::clone(&self.inner.stats),
-                            client_init.dc,
-                            client_init.media,
-                        )
-                        .await?;
-                        return Ok(());
+            let attempts = domains
+                .into_iter()
+                .enumerate()
+                .map(|(index, base_domain)| async move {
+                    // Let a healthy cached domain win without opening extra sockets.
+                    if index > 0 {
+                        tokio::time::sleep(Duration::from_millis(200)).await;
                     }
-                    Err(error) => debug!(%domain, %error, "CF proxy fallback failed"),
-                }
+                    let domain = format!("kws{}.{}", client_init.dc, base_domain);
+                    match self
+                        .connect_websocket(
+                            &domain,
+                            &domain,
+                            None,
+                            "/apiws",
+                            CONNECT_TIMEOUT,
+                            true,
+                            !self.inner.config.disable_secure,
+                        )
+                        .await
+                    {
+                        Ok(websocket) => {
+                            if let Err(error) = websocket.sender.send_binary(&relay_init).await {
+                                debug!(%domain, %error, "CF WebSocket failed before client data");
+                                websocket.close().await;
+                                return None;
+                            }
+                            Some((websocket, base_domain, domain))
+                        }
+                        Err(error) => {
+                            debug!(%domain, %error, "CF proxy fallback failed");
+                            None
+                        }
+                    }
+                });
+            if let Some((websocket, base_domain, domain)) =
+                first_available(attempts, CF_CONNECT_CONCURRENCY, CF_CONNECT_BUDGET).await
+            {
+                self.inner
+                    .active_cf_domain
+                    .lock()
+                    .await
+                    .insert(client_init.dc, base_domain);
+                Stats::increment(&self.inner.stats.connections_cfproxy);
+                info!(
+                    label = %prepared.as_ref().expect("session is available").label,
+                    dc = client_init.dc,
+                    media = client_init.media,
+                    route = "cloudflare-proxy",
+                    domain = %domain,
+                    "upstream route connected"
+                );
+                let splitter = MessageSplitter::new(
+                    &relay_init,
+                    client_init.transport,
+                    self.inner.config.max_ws_frame_size,
+                );
+                bridge_websocket(
+                    prepared.take().expect("session consumed once"),
+                    websocket,
+                    crypto.take().expect("crypto consumed once"),
+                    Some(splitter),
+                    Arc::clone(&self.inner.stats),
+                    client_init.dc,
+                    client_init.media,
+                )
+                .await?;
+                return Ok(());
             }
+            warn!(
+                dc = client_init.dc,
+                secure = !self.inner.config.disable_secure,
+                "CF WebSocket routes unavailable within connection budget; trying TCP fallback"
+            );
         }
 
-        let connected = timeout(CONNECT_TIMEOUT, TcpStream::connect((fallback_ip, 443))).await;
-        let Ok(Ok(mut telegram)) = connected else {
-            warn!(
-                label = %prepared.as_ref().expect("not consumed").label,
-                %fallback_ip,
-                "TCP fallback failed"
-            );
-            return Ok(());
+        let connected = timeout(CONNECT_TIMEOUT, TcpStream::connect((fallback_ip, 443)))
+            .await
+            .unwrap_or_else(|_| {
+                Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "connection timed out",
+                ))
+            });
+        let mut telegram = match connected {
+            Ok(telegram) => telegram,
+            Err(error) => {
+                warn!(
+                    label = %prepared.as_ref().expect("not consumed").label,
+                    %fallback_ip,
+                    %error,
+                    "TCP fallback failed"
+                );
+                return Ok(());
+            }
         };
         telegram.set_nodelay(true)?;
         telegram.write_all(&relay_init).await?;
@@ -798,6 +874,31 @@ impl Proxy {
         replays.insert(client_random, now);
         true
     }
+}
+
+// Dropping the losing futures closes their transports. Only the selected route
+// receives client payload; attempts send the obfuscation init at most.
+async fn first_available<T, F>(
+    attempts: impl IntoIterator<Item = F>,
+    concurrency: usize,
+    budget: Duration,
+) -> Option<T>
+where
+    F: Future<Output = Option<T>>,
+{
+    timeout(budget, async {
+        let results = stream::iter(attempts).buffer_unordered(concurrency);
+        tokio::pin!(results);
+        while let Some(result) = results.next().await {
+            if result.is_some() {
+                return result;
+            }
+        }
+        None
+    })
+    .await
+    .ok()
+    .flatten()
 }
 
 fn is_direct_masking_self_loop(origin: Option<SocketAddr>, listener: Option<SocketAddr>) -> bool {
@@ -944,13 +1045,16 @@ async fn bridge_websocket(
     result.map_err(Into::into)
 }
 
-async fn bridge_tcp(
+async fn bridge_tcp<T>(
     mut client: PreparedClient,
-    telegram: TcpStream,
+    telegram: T,
     crypto: crate::crypto::CryptoContext,
     stats: Arc<Stats>,
-) -> Result<()> {
-    let (mut telegram_reader, mut telegram_writer) = telegram.into_split();
+) -> Result<()>
+where
+    T: AsyncRead + AsyncWrite + Unpin + Send,
+{
+    let (mut telegram_reader, mut telegram_writer) = tokio::io::split(telegram);
     let mut upstream_crypto = crypto.upstream;
     let mut downstream_crypto = crypto.downstream;
 
@@ -1007,6 +1111,77 @@ fn shuffle<T>(values: &mut [T]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn fallback_does_not_wait_for_a_stalled_domain() {
+        let attempts = (0..3).map(|index| async move {
+            match index {
+                0 => std::future::pending::<Option<usize>>().await,
+                1 => None,
+                _ => Some(index),
+            }
+        });
+        let selected = timeout(
+            Duration::from_secs(1),
+            first_available(attempts, 2, Duration::from_secs(60)),
+        )
+        .await
+        .expect("a healthy domain must bypass a stalled earlier attempt");
+        assert_eq!(selected, Some(2));
+    }
+
+    #[tokio::test]
+    async fn fallback_budget_limits_concurrency_and_cancels_losing_attempts() {
+        use std::sync::atomic::AtomicUsize;
+
+        struct Attempt<'a>(&'a AtomicUsize);
+        impl Drop for Attempt<'_> {
+            fn drop(&mut self) {
+                self.0.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+
+        let started = AtomicUsize::new(0);
+        let cancelled = AtomicUsize::new(0);
+        let attempts = (0..20).map(|_| async {
+            started.fetch_add(1, Ordering::Relaxed);
+            let _attempt = Attempt(&cancelled);
+            std::future::pending::<Option<()>>().await
+        });
+        assert_eq!(
+            first_available(attempts, 4, Duration::from_millis(20)).await,
+            None
+        );
+        assert_eq!(started.load(Ordering::Relaxed), 4);
+        assert_eq!(cancelled.load(Ordering::Relaxed), 4);
+    }
+
+    #[tokio::test]
+    async fn fallback_success_cancels_a_stalled_competitor() {
+        struct Attempt(Arc<std::sync::atomic::AtomicBool>);
+        impl Drop for Attempt {
+            fn drop(&mut self) {
+                self.0.store(true, Ordering::Relaxed);
+            }
+        }
+        let cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let attempts = (0..2).map(|index| {
+            let cancelled = Arc::clone(&cancelled);
+            async move {
+                if index == 0 {
+                    let _attempt = Attempt(cancelled);
+                    std::future::pending::<Option<usize>>().await
+                } else {
+                    Some(index)
+                }
+            }
+        });
+        assert_eq!(
+            first_available(attempts, 2, Duration::from_secs(1)).await,
+            Some(1)
+        );
+        assert!(cancelled.load(Ordering::Relaxed));
+    }
 
     #[test]
     fn redirect_blacklist_requires_every_attempt_to_redirect() {

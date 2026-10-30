@@ -248,7 +248,17 @@ impl ControlWindow {
                 "CF и Worker без TLS (порт 80)",
                 "CF and Worker without TLS (port 80)",
             );
-            ui.checkbox(&mut self.config.no_secure, no_secure);
+            if ui.checkbox(&mut self.config.no_secure, no_secure).changed() && self.config.no_secure {
+                self.config.worker_tls_only = false;
+            }
+            let tls_only = self.text("Worker: только TLS", "Worker: TLS only");
+            if ui.checkbox(&mut self.config.worker_tls_only, tls_only).changed() && self.config.worker_tls_only {
+                self.config.no_secure = false;
+            }
+            ui.weak(self.text(
+                "HTTP relay может перейти на порт 80 при сетевом таймауте TLS. MTProto остаётся зашифрованным.",
+                "HTTP relay may use port 80 after a TLS transport timeout. MTProto remains encrypted.",
+            ));
             ui.add_space(12.0);
             ui.horizontal(|ui| {
                 ui.label(self.text("Размер пула", "Pool size"));

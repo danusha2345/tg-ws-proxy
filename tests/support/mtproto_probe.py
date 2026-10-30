@@ -7,16 +7,20 @@ Run with an isolated Python environment; PYTHONPATH is also supported.
 import argparse
 import asyncio
 import hashlib
+import logging
 import os
 import socket
 import ssl
 import struct
 import time
+from collections import defaultdict
+from pathlib import Path
 
 import websockets
 from Crypto.Cipher import AES as CTR
 from telethon.crypto import AES, Factorization, rsa
 from telethon.extensions import BinaryReader
+from telethon.network.connection.tcpmtproxy import ConnectionTcpMTProxyRandomizedIntermediate
 from telethon.tl.functions import ReqDHParamsRequest, ReqPqMultiRequest
 from telethon.tl.types import PQInnerDataTempDc, ResPQ, ServerDHParamsOk
 
@@ -51,14 +55,39 @@ def rsa_pad(fingerprint, data):
             return pow(number, key.e, key.n).to_bytes(256, "big")
 
 
-async def probe(domain, dc, ip):
+async def probe_dh(request, dc):
+    nonce = int.from_bytes(os.urandom(16), "little", signed=True)
+    pq = await request(ReqPqMultiRequest(nonce))
+    if isinstance(pq, int):
+        raise ValueError(f"req_pq failed with transport error {pq}")
+    assert isinstance(pq, ResPQ) and pq.nonce == nonce, "unexpected resPQ"
+    p, q = Factorization.factorize(int.from_bytes(pq.pq, "big"))
+    p, q = rsa.get_byte_array(p), rsa.get_byte_array(q)
+    fingerprint = next(x for x in pq.server_public_key_fingerprints if x == SERVER_FINGERPRINT)
+    inner = bytes(PQInnerDataTempDc(
+        pq=pq.pq, p=p, q=q, nonce=nonce, server_nonce=pq.server_nonce,
+        new_nonce=int.from_bytes(os.urandom(32), "little", signed=True),
+        dc=dc, expires_in=3600,
+    ))
+    answer = await request(ReqDHParamsRequest(
+        nonce=nonce, server_nonce=pq.server_nonce, p=p, q=q,
+        public_key_fingerprint=fingerprint, encrypted_data=rsa_pad(fingerprint, inner),
+    ))
+    if isinstance(answer, ServerDHParamsOk):
+        assert answer.nonce == nonce and answer.server_nonce == pq.server_nonce
+        return "ServerDHParamsOk"
+    return str(answer) if isinstance(answer, int) else type(answer).__name__
+
+
+async def probe(domain, dc, ip, port=443, secure=True, path="/apiws"):
     sock = socket.socket()
     sock.setblocking(False)
     try:
-        await asyncio.wait_for(asyncio.get_running_loop().sock_connect(sock, (ip, 443)), 8)
+        await asyncio.wait_for(asyncio.get_running_loop().sock_connect(sock, (ip, port)), 8)
         async with websockets.connect(
-            "wss://" + domain + "/apiws", sock=sock,
-            ssl=ssl.create_default_context(), server_hostname=domain,
+            ("wss://" if secure else "ws://") + domain + path, sock=sock,
+            ssl=ssl.create_default_context() if secure else None,
+            server_hostname=domain if secure else None,
             subprotocols=["binary"], proxy=None, open_timeout=8, ping_interval=None,
         ) as websocket:
             init = bytearray(os.urandom(64))
@@ -97,39 +126,73 @@ async def probe(domain, dc, ip):
                     data = await asyncio.wait_for(websocket.recv(), 8)
                     buffer += decrypt.decrypt(data)
 
-            nonce = int.from_bytes(os.urandom(16), "little", signed=True)
-            pq = await request(ReqPqMultiRequest(nonce))
-            if isinstance(pq, int):
-                raise ValueError(f"req_pq failed with transport error {pq}")
-            assert isinstance(pq, ResPQ) and pq.nonce == nonce, "unexpected resPQ"
-            p, q = Factorization.factorize(int.from_bytes(pq.pq, "big"))
-            p, q = rsa.get_byte_array(p), rsa.get_byte_array(q)
-            fingerprint = next(x for x in pq.server_public_key_fingerprints if x == SERVER_FINGERPRINT)
-            inner = bytes(PQInnerDataTempDc(
-                pq=pq.pq, p=p, q=q, nonce=nonce, server_nonce=pq.server_nonce,
-                new_nonce=int.from_bytes(os.urandom(32), "little", signed=True),
-                dc=dc, expires_in=3600,
-            ))
-            answer = await request(ReqDHParamsRequest(
-                nonce=nonce, server_nonce=pq.server_nonce, p=p, q=q,
-                public_key_fingerprint=fingerprint, encrypted_data=rsa_pad(fingerprint, inner),
-            ))
-            if isinstance(answer, ServerDHParamsOk):
-                assert answer.nonce == nonce and answer.server_nonce == pq.server_nonce
-                return "ServerDHParamsOk"
-            return str(answer) if isinstance(answer, int) else type(answer).__name__
+            return await probe_dh(request, dc)
     finally:
         sock.close()
 
 
+async def probe_proxy(host, port, dc, secret_file):
+    """Check the real local proxy through req_DH, without an account or auth key."""
+    secret = Path(secret_file).read_text().strip()
+    if len(secret) != 32 or any(c not in "0123456789abcdefABCDEF" for c in secret):
+        raise ValueError("secret file must contain 32 hexadecimal characters")
+    connection = ConnectionTcpMTProxyRandomizedIntermediate(
+        "149.154.167.51", 443, dc,
+        loggers=defaultdict(lambda: logging.getLogger("mtproto_probe")),
+        proxy=(host, port, secret),
+    )
+    try:
+        await connection.connect(timeout=8)
+
+        async def request(obj):
+            body = bytes(obj)
+            message_id = int(time.time() * 2**32) & ~3
+            payload = bytes(8) + struct.pack("<QI", message_id, len(body)) + body
+            await connection.send(payload)
+            data = await asyncio.wait_for(connection.recv(), 25)
+            if len(data) < 4:
+                raise ValueError("truncated MTProto response")
+            error = struct.unpack("<i", data[:4])[0]
+            if len(data) <= 56 and error < 0:
+                return error
+            if len(data) < 20:
+                raise ValueError("truncated MTProto response header")
+            length = struct.unpack("<I", data[16:20])[0]
+            if length > len(data) - 20:
+                raise ValueError("truncated MTProto response body")
+            with BinaryReader(data[20:20 + length]) as reader:
+                return reader.tgread_object()
+
+        return await probe_dh(request, dc)
+    finally:
+        await connection.disconnect()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--domain", required=True)
+    parser.add_argument("--domain")
     parser.add_argument("--dc", required=True, type=int)
     parser.add_argument("--ip", default="149.154.167.220")
-    parser.add_argument("--expect", required=True)
+    parser.add_argument("--port", type=int)
+    parser.add_argument("--path", default="/apiws")
+    parser.add_argument("--no-secure", action="store_true")
+    parser.add_argument("--proxy-host")
+    parser.add_argument("--proxy-port", type=int, default=1443)
+    parser.add_argument("--secret-file")
+    parser.add_argument("--expect", default="ServerDHParamsOk")
     args = parser.parse_args()
-    result = asyncio.run(asyncio.wait_for(probe(args.domain, args.dc, args.ip), 30))
-    print(f"domain={args.domain} dc={args.dc} req_DH={result}")
+    if args.proxy_host:
+        if not args.secret_file or args.domain:
+            parser.error("--proxy-host requires --secret-file and cannot use --domain")
+        check = probe_proxy(args.proxy_host, args.proxy_port, args.dc, args.secret_file)
+        route = "local-proxy"
+    else:
+        if not args.domain or args.secret_file:
+            parser.error("--domain is required for a direct WS probe")
+        port = args.port if args.port is not None else (80 if args.no_secure else 443)
+        check = probe(args.domain, args.dc, args.ip, port, not args.no_secure, args.path)
+        route = args.domain
+    result = asyncio.run(asyncio.wait_for(check, 40))
+    print(f"route={route} dc={args.dc} req_DH={result}")
     if result != args.expect:
         raise SystemExit(f"expected {args.expect}, received {result}")

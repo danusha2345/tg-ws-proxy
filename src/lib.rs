@@ -1,4 +1,5 @@
 mod client;
+mod http_relay;
 
 pub mod config;
 pub mod crypto;

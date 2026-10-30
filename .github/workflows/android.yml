@@ -8,6 +8,7 @@ on:
       - "android/**"
       - "crates/android-bridge/**"
       - "src/**"
+      - "cloudflare/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/android.yml"
@@ -16,6 +17,7 @@ on:
       - "android/**"
       - "crates/android-bridge/**"
       - "src/**"
+      - "cloudflare/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/android.yml"
@@ -79,6 +81,9 @@ jobs:
 
       - name: Install cargo-ndk
         run: cargo install cargo-ndk --version 4.1.2 --locked
+
+      - name: Test Worker relay protocol
+        run: node --test cloudflare/relay.test.mjs
 
       - name: Check Rust bridge
         run: |

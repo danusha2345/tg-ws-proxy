@@ -19,7 +19,7 @@ use crate::websocket::{RawWebSocket, WebSocketError};
 const MAX_AGE: Duration = Duration::from_secs(120);
 const MAINTENANCE_INTERVAL: Duration = Duration::from_secs(5);
 const REFILL_BACKOFF_INITIAL: Duration = Duration::from_secs(1);
-const REFILL_BACKOFF_MAX: Duration = Duration::from_secs(3600);
+const REFILL_BACKOFF_MAX: Duration = Duration::from_secs(60);
 const IDLE_PROBE_TIMEOUT: Duration = Duration::from_millis(1);
 const IDLE_CLOSE_TIMEOUT: Duration = Duration::from_secs(2);
 
@@ -169,7 +169,13 @@ impl WsPool {
                 self.register_worker(
                     key,
                     fallback_ip,
-                    self.inner.config.cfproxy_worker_domains.clone(),
+                    self.inner
+                        .config
+                        .cfproxy_worker_domains
+                        .iter()
+                        .filter(|domain| domain.as_str() != crate::config::DEFAULT_WORKER_DOMAIN)
+                        .cloned()
+                        .collect(),
                 )
                 .await;
                 self.schedule_refill(key).await;
@@ -520,11 +526,14 @@ impl WsPool {
                 }
                 Err(error) if error.is_redirect() => {}
                 Err(error) if !prefer_fronting && error.permits_fronting_retry() => {
+                    debug!(dc = key.dc, %host, %domain, %error, "WebSocket pool connection failed; trying fronting");
                     if let Some(websocket) = self.connect_fronted(key, host, domain).await {
                         return Some((websocket, None));
                     }
                 }
-                Err(_) => {}
+                Err(error) => {
+                    debug!(dc = key.dc, %host, %domain, %error, "WebSocket pool connection failed");
+                }
             }
         }
         None
@@ -539,6 +548,9 @@ impl WsPool {
         let websocket = self
             .connect(host, domain, Some("sprinthost.ru"), "/apiws", true, true)
             .await
+            .inspect_err(|error| {
+                debug!(dc = key.dc, %host, %domain, %error, "WebSocket pool fronting failed");
+            })
             .ok()?;
         Stats::increment(&self.inner.stats.connections_fronting);
         self.set_fronting_preference(key, true);
@@ -572,7 +584,13 @@ impl WsPool {
     fn capacity(&self, key: PoolKey) -> usize {
         match key.route {
             PoolRoute::Direct { .. } => self.inner.config.pool_size,
-            PoolRoute::Worker => usize::from(!self.inner.config.cfproxy_worker_domains.is_empty()),
+            PoolRoute::Worker => usize::from(
+                self.inner
+                    .config
+                    .cfproxy_worker_domains
+                    .iter()
+                    .any(|domain| domain != crate::config::DEFAULT_WORKER_DOMAIN),
+            ),
         }
     }
 
