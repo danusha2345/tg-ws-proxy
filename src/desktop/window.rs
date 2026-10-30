@@ -248,8 +248,8 @@ impl ControlWindow {
                     .desired_width(f32::INFINITY),
             );
             let no_secure = self.text(
-                "WS и Worker без TLS (порт 80)",
-                "WS and Worker without TLS (port 80)",
+                "Предпочитать WS/80; Worker без TLS",
+                "Prefer WS/80; Worker without TLS",
             );
             if ui.checkbox(&mut self.config.no_secure, no_secure).changed() && self.config.no_secure {
                 self.config.worker_tls_only = false;

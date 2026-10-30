@@ -4,7 +4,7 @@
 
 Если GitHub недоступен, используйте публичное зеркало с файлами на GitLab:
 
-- [Windows, Linux и macOS — Rust 1.15.0](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/rust-v1.15.0)
+- [Windows, Linux и macOS — Rust 1.15.1](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/rust-v1.15.1)
 - [Android 0.5.1 — подписанные APK](https://gitlab.com/pipecpriam/tg-ws-proxy/-/releases/android-v0.5.1)
 - [Исходники и ветки](https://gitlab.com/pipecpriam/tg-ws-proxy)
 
