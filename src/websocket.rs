@@ -206,7 +206,7 @@ impl RawWebSocket {
     ) -> Result<Self, WebSocketError> {
         timeout(operation_timeout, async {
             let port = if secure { 443 } else { 80 };
-            let stream = TcpStream::connect((host, port)).await?;
+            let stream = crate::tcp_connect::connect(host, port).await?;
             stream.set_nodelay(true)?;
             let socket = SockRef::from(&stream);
             let _ = socket.set_recv_buffer_size(buffer_size);

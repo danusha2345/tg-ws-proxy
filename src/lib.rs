@@ -1,6 +1,7 @@
 mod cf_h2;
 mod client;
 mod http_relay;
+mod tcp_connect;
 
 pub mod config;
 pub mod crypto;
